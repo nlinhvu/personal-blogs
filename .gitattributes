@@ -1,0 +1,19 @@
+# Normalise all text files to LF in the repository and in the working tree.
+# CI runs on Linux; authoring happens on macOS. LF everywhere avoids diff noise.
+* text=auto eol=lf
+
+# Binary assets — never normalise, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+# Lockfiles are generated. Collapse them in GitHub diffs, but still review them.
+package-lock.json linguist-generated=true
+.terraform.lock.hcl linguist-generated=true
