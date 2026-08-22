@@ -1,0 +1,22 @@
+{
+  "name": "@vulinh/site",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "types": "wrangler types",
+    "prebuild": "npm run types",
+    "build": "astro build",
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "astro": "7.2.4"
+  },
+  "devDependencies": {
+    "wrangler": "4.124.0",
+    "vitest": "4.1.11",
+    "@cloudflare/vitest-pool-workers": "0.22.0"
+  }
+}

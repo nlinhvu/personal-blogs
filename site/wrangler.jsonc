@@ -1,0 +1,21 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "blog-prod",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Enforces the URL contract: /blog/<slug>/ redirects 301 to /blog/<slug>.
+    // Must agree with trailingSlash: "never" in astro.config.mjs.
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+  // No account_id here on purpose: the account comes from the wrangler
+  // authentication profile locally, and from CLOUDFLARE_ACCOUNT_ID in CI.
+  // legacy_env is forbidden; environments are declared with "env" blocks.
+}
