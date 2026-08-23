@@ -1,0 +1,47 @@
+name: site-preview
+
+on:
+  pull_request:
+    paths:
+      - "site/**"
+      - "content/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+
+permissions: {}
+
+env:
+  PREVIEW_URL: https://blog-preview.vulinh.workers.dev
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    environment: preview
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/build-site
+        with:
+          site-url: ${{ env.PREVIEW_URL }}
+          is-dev: "true"
+      # `npm test` runs `astro build && vitest run`, so it rebuilds dist/ and
+      # would otherwise overwrite the build above with default settings: the
+      # production SITE_URL and no noindex header. Repeat the same environment
+      # so what gets tested is byte-for-byte what gets deployed.
+      - run: npm test
+        env:
+          SITE_URL: ${{ env.PREVIEW_URL }}
+          IS_DEV: "true"
+      - run: npx wrangler deploy --env preview
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke test preview
+        run: |
+          set -euo pipefail
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "$PREVIEW_URL/")" = "200"
+          curl -sSI "$PREVIEW_URL/" | grep -qi 'x-robots-tag: noindex, nofollow'
+          echo "preview smoke passed"

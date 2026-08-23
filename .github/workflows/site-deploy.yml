@@ -1,0 +1,80 @@
+name: site-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "content/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+
+permissions: {}
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/build-site
+        with:
+          site-url: ${{ vars.STAGING_URL }}
+          is-dev: "true"
+      # `npm test` runs `astro build && vitest run`, so it rebuilds dist/ and
+      # would otherwise overwrite the build above with default settings: the
+      # production SITE_URL and no noindex header. Repeat the same environment
+      # so what gets tested is byte-for-byte what gets deployed.
+      - run: npm test
+        env:
+          SITE_URL: ${{ vars.STAGING_URL }}
+          IS_DEV: "true"
+      - id: deploy
+        run: |
+          npx wrangler deploy --env staging
+          echo "url=${{ vars.STAGING_URL }}" >> "$GITHUB_OUTPUT"
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke test staging
+        run: |
+          set -euo pipefail
+          URL="${{ vars.STAGING_URL }}"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/")" = "200"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/vi")" = "200"
+          curl -sSI "$URL/" | grep -qi 'x-robots-tag: noindex, nofollow'
+          echo "staging smoke passed"
+
+  production:
+    needs: staging
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/build-site
+        with:
+          site-url: https://vulinh.dev
+          is-dev: "false"
+      - run: npx wrangler deploy
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke test production
+        run: |
+          set -euo pipefail
+          test "$(curl -sS -o /dev/null -w '%{http_code}' https://vulinh.dev/)" = "200"
+          curl -sS https://vulinh.dev/blog/hello-bilingual \
+            | grep -q 'rel="canonical" href="https://vulinh.dev/blog/hello-bilingual"'
+          curl -sSI https://vulinh.dev/ | grep -qi 'x-content-type-options: nosniff'
+          curl -sSI https://vulinh.dev/ | grep -qi 'x-robots-tag' \
+            && { echo "FAIL: production is de-indexed"; exit 1; } || true
+          echo "production smoke passed"
