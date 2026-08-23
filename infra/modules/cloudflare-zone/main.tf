@@ -97,10 +97,12 @@ resource "cloudflare_zone_setting" "brotli" {
   value      = "on"
 }
 
-# Bot Fight Mode. The v5 provider does expose this, through the bot management
-# resource rather than a zone setting, so it belongs in code rather than in the
-# dashboard. Only fight_mode is set: the Super Bot Fight Mode fields next to it
-# need a paid plan and this zone is on Free.
+# Bot Fight Mode, declared so a dashboard click shows up as drift on the next
+# plan. It is off; see ADR-0009 for the reasoning. In short: Cloudflare forces
+# JavaScript Detections on alongside it, JavaScript Detections injects an inline
+# script, and this zone delivers its CSP through a <meta> tag, which Cloudflare
+# cannot add a nonce to. The injected script would be blocked on every page view
+# and the console error would be the only thing anyone gained.
 resource "cloudflare_bot_management" "this" {
   zone_id    = cloudflare_zone.this.id
   fight_mode = var.bot_fight_mode
