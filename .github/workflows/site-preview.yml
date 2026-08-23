@@ -8,6 +8,12 @@ on:
       - "scripts/**"
       - "package.json"
       - "package-lock.json"
+      # The pipeline tests itself. Without these, a change to the workflow,
+      # its composite action or its helper scripts merges without ever running,
+      # and a broken pipeline is only discovered on the next content change.
+      - ".github/workflows/site-preview.yml"
+      - ".github/actions/build-site/**"
+      - ".github/scripts/**"
 
 permissions: {}
 
@@ -42,6 +48,6 @@ jobs:
       - name: Smoke test preview
         run: |
           set -euo pipefail
-          test "$(curl -sS -o /dev/null -w '%{http_code}' "$PREVIEW_URL/")" = "200"
+          .github/scripts/wait-for-http-200.sh "$PREVIEW_URL/"
           curl -sSI "$PREVIEW_URL/" | grep -qi 'x-robots-tag: noindex, nofollow'
           echo "preview smoke passed"
