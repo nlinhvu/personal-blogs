@@ -20,3 +20,11 @@ output "name_servers" {
   description = "Set these at the registrar to hand DNS over to Cloudflare"
   value       = module.zone.name_servers
 }
+
+output "dnssec_ds" {
+  value = module.zone.dnssec_ds
+}
+
+output "dnssec_details" {
+  value = module.zone.dnssec_details
+}
