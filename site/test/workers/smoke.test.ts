@@ -44,3 +44,20 @@ describe("bilingual routing", () => {
     expect(response.headers.get("location")).toBe("/blog/hello-bilingual");
   });
 });
+
+describe("404 page", () => {
+  it("answers an unknown English path with a real error page", async () => {
+    const response = await SELF.fetch("https://vulinh.dev/blog/does-not-exist");
+    expect(response.status).toBe(404);
+    const html = await response.text();
+    expect(html).toContain("Not found");
+    expect(html).toContain('href="/"');
+  });
+
+  it("answers an unknown Vietnamese path with the same error page", async () => {
+    const response = await SELF.fetch("https://vulinh.dev/vi/blog/does-not-exist");
+    expect(response.status).toBe(404);
+    const html = await response.text();
+    expect(html).toContain("Not found");
+  });
+});
