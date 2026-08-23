@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  // No workers types here on purpose. These tests run on Node and must not be
+  // able to import "cloudflare:test" — that import belongs in test/workers.
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["./**/*.ts"]
+}
