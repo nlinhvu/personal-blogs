@@ -1,0 +1,66 @@
+name: infra-apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      # The pipeline tests itself; see site-preview.yml for the reasoning.
+      - ".github/workflows/infra-apply.yml"
+
+permissions: {}
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    strategy:
+      # dev first, then prod: a mistake surfaces on the throwaway account
+      # before it reaches the one serving readers.
+      max-parallel: 1
+      matrix:
+        env: [dev, prod]
+    # This environment carries a required-reviewer protection rule.
+    # The run pauses here until a human approves it.
+    environment: infra-${{ matrix.env }}-apply
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2
+        with:
+          tofu_version: 1.12.6
+          tofu_wrapper: false
+      - name: Apply
+        working-directory: infra/envs/${{ matrix.env }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          tofu init -input=false
+          tofu apply -input=false -auto-approve
+      - name: Snapshot state
+        # R2 has no object versioning, so keep a dated copy after every
+        # successful apply. This is the substitute for versioning.
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          BUCKET: vulinh-tofu-state
+        run: |
+          set -euo pipefail
+          SRC="s3://$BUCKET/${{ matrix.env }}/terraform.tfstate"
+          # An environment that declares no resources yet — dev, today — may
+          # have no state object at all. That is not a failure.
+          if ! aws s3 ls "$SRC" --endpoint-url "$R2_ENDPOINT" >/dev/null 2>&1; then
+            echo "no state object at $SRC yet, nothing to snapshot"
+            exit 0
+          fi
+          STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+          aws s3 cp \
+            "$SRC" \
+            "s3://$BUCKET/history/${{ matrix.env }}-$STAMP.tfstate" \
+            --endpoint-url "$R2_ENDPOINT"
+          echo "snapshotted ${{ matrix.env }} state at $STAMP"

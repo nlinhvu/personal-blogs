@@ -1,19 +1,13 @@
 name: site-preview
 
+# No `paths` filter on purpose. This workflow's `preview` job is a REQUIRED
+# status check on main, and GitHub treats a required check that never reports as
+# pending forever — so a path-filtered required check makes every pull request
+# that misses those paths unmergeable. Running on every pull request costs about
+# forty seconds and removes that whole class of deadlock, while also building and
+# testing the site before any change lands, infrastructure changes included.
 on:
   pull_request:
-    paths:
-      - "site/**"
-      - "content/**"
-      - "scripts/**"
-      - "package.json"
-      - "package-lock.json"
-      # The pipeline tests itself. Without these, a change to the workflow,
-      # its composite action or its helper scripts merges without ever running,
-      # and a broken pipeline is only discovered on the next content change.
-      - ".github/workflows/site-preview.yml"
-      - ".github/actions/build-site/**"
-      - ".github/scripts/**"
 
 permissions: {}
 

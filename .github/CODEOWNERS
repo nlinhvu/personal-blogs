@@ -1,0 +1,11 @@
+# The two most dangerous directories require explicit review.
+#
+# This file documents ownership. It only *blocks* a merge if the branch ruleset
+# also turns on "Require review from Code Owners" — deliberately left off, since
+# GitHub forbids approving your own pull request and a single-author repository
+# would then be unable to merge its own infrastructure changes at all.
+#
+# The real gate on infrastructure is the required reviewer on the
+# infra-*-apply GitHub Environments, which a run's own author *can* approve.
+/infra/     @nlinhvu
+/.github/   @nlinhvu
