@@ -1,6 +1,22 @@
 import { SELF } from "cloudflare:test";
 import { describe, it, expect } from "vitest";
 
+// The deployment host is configuration, not behaviour: SITE_URL differs between
+// production, staging and preview, so these tests assert the URL contract —
+// absolute links, correct paths, reciprocal hreflang — and leave the exact host
+// to the per-environment smoke tests in .github/workflows.
+function canonicalOf(html: string): URL {
+  const match = html.match(/<link rel="canonical" href="([^"]+)"/);
+  if (!match) throw new Error("no canonical link in the document");
+  return new URL(match[1]);
+}
+
+function alternateOf(html: string, hreflang: string): URL {
+  const match = html.match(new RegExp(`<link rel="alternate" hreflang="${hreflang}" href="([^"]+)"`));
+  if (!match) throw new Error(`no hreflang="${hreflang}" alternate in the document`);
+  return new URL(match[1]);
+}
+
 describe("static asset serving", () => {
   it("serves the home page", async () => {
     const response = await SELF.fetch("https://vulinh.dev/");
@@ -20,9 +36,17 @@ describe("bilingual routing", () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain('<html lang="en"');
-    expect(html).toContain('rel="canonical" href="https://vulinh.dev/blog/hello-bilingual"');
-    expect(html).toContain('hreflang="vi" href="https://vulinh.dev/vi/blog/hello-bilingual"');
-    expect(html).toContain('hreflang="x-default"');
+
+    const canonical = canonicalOf(html);
+    const vietnamese = alternateOf(html, "vi");
+    const fallback = alternateOf(html, "x-default");
+
+    expect(canonical.pathname).toBe("/blog/hello-bilingual");
+    expect(vietnamese.pathname).toBe("/vi/blog/hello-bilingual");
+    // x-default points at English, the source language.
+    expect(fallback.href).toBe(canonical.href);
+    // One SITE_URL built all three, so they must agree on the origin.
+    expect(vietnamese.origin).toBe(canonical.origin);
   });
 
   it("serves the Vietnamese post", async () => {
@@ -30,7 +54,13 @@ describe("bilingual routing", () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain('<html lang="vi"');
-    expect(html).toContain('rel="canonical" href="https://vulinh.dev/vi/blog/hello-bilingual"');
+
+    const canonical = canonicalOf(html);
+    const english = alternateOf(html, "en");
+
+    expect(canonical.pathname).toBe("/vi/blog/hello-bilingual");
+    expect(english.pathname).toBe("/blog/hello-bilingual");
+    expect(english.origin).toBe(canonical.origin);
   });
 
   // Workers Static Assets always answers html_handling redirects with 307, in
