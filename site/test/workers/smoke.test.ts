@@ -13,3 +13,34 @@ describe("static asset serving", () => {
     expect(response.status).toBe(404);
   });
 });
+
+describe("bilingual routing", () => {
+  it("serves the English post", async () => {
+    const response = await SELF.fetch("https://vulinh.dev/blog/hello-bilingual");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('<html lang="en"');
+    expect(html).toContain('rel="canonical" href="https://vulinh.dev/blog/hello-bilingual"');
+    expect(html).toContain('hreflang="vi" href="https://vulinh.dev/vi/blog/hello-bilingual"');
+    expect(html).toContain('hreflang="x-default"');
+  });
+
+  it("serves the Vietnamese post", async () => {
+    const response = await SELF.fetch("https://vulinh.dev/vi/blog/hello-bilingual");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('<html lang="vi"');
+    expect(html).toContain('rel="canonical" href="https://vulinh.dev/vi/blog/hello-bilingual"');
+  });
+
+  // Workers Static Assets always answers html_handling redirects with 307, in
+  // every mode; the status code is not configurable. The canonical link on the
+  // destination page is what tells a crawler which URL is the real one.
+  it("redirects a trailing slash away", async () => {
+    const response = await SELF.fetch("https://vulinh.dev/blog/hello-bilingual/", {
+      redirect: "manual",
+    });
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("/blog/hello-bilingual");
+  });
+});

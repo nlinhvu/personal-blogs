@@ -1,0 +1,31 @@
+---
+import type { Language } from "../loaders/bilingual-post";
+import { canonicalUrl, otherLanguage } from "../lib/urls";
+
+interface Props {
+  title: string;
+  description: string;
+  lang: Language;
+  path: string;
+  alternatePath: string;
+  defaultPath: string;
+}
+
+const { title, description, lang, path, alternatePath, defaultPath } = Astro.props;
+const site = Astro.site!.toString();
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl(path, site)} />
+    <link rel="alternate" hreflang={otherLanguage(lang)} href={canonicalUrl(alternatePath, site)} />
+    <link rel="alternate" hreflang="x-default" href={canonicalUrl(defaultPath, site)} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

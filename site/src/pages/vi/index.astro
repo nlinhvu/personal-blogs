@@ -1,0 +1,28 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import LanguageSwitcher from "../../components/LanguageSwitcher.astro";
+import { postPath } from "../../lib/urls";
+
+const entries = (await getCollection("blog", ({ data }) => data.lang === "vi")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+---
+<BaseLayout
+  title="vulinh.dev"
+  description="Bài viết kỹ thuật song ngữ về Java, Spring và JVM."
+  lang="vi"
+  path="/vi"
+  alternatePath="/"
+  defaultPath="/"
+>
+  <nav><LanguageSwitcher lang="vi" href="/" /></nav>
+  <h1>vulinh.dev</h1>
+  <ul>
+    {entries.map((entry) => (
+      <li>
+        <a href={postPath(entry.data.slug, "vi")}>{entry.data.title}</a>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>

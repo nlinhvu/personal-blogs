@@ -1,0 +1,14 @@
+---
+import type { Language } from "../loaders/bilingual-post";
+import { otherLanguage } from "../lib/urls";
+
+interface Props {
+  lang: Language;
+  href: string;
+}
+
+const { lang, href } = Astro.props;
+const target = otherLanguage(lang);
+const label = target === "vi" ? "Tiếng Việt" : "English";
+---
+<a href={href} hreflang={target} rel="alternate">{label}</a>

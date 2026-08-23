@@ -1,15 +1,28 @@
 ---
-const buildTime = new Date().toISOString();
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import LanguageSwitcher from "../components/LanguageSwitcher.astro";
+import { postPath } from "../lib/urls";
+
+const entries = (await getCollection("blog", ({ data }) => data.lang === "en")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
 ---
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>vulinh.dev</title>
-  </head>
-  <body>
-    <h1>vulinh.dev</h1>
-    <p>Walking skeleton. Built at {buildTime}.</p>
-  </body>
-</html>
+<BaseLayout
+  title="vulinh.dev"
+  description="Bilingual technical writing on Java, Spring and the JVM."
+  lang="en"
+  path="/"
+  alternatePath="/vi"
+  defaultPath="/"
+>
+  <nav><LanguageSwitcher lang="en" href="/vi" /></nav>
+  <h1>vulinh.dev</h1>
+  <ul>
+    {entries.map((entry) => (
+      <li>
+        <a href={postPath(entry.data.slug, "en")}>{entry.data.title}</a>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>
