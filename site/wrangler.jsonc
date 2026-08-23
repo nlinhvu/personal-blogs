@@ -3,6 +3,11 @@
   "name": "blog-prod",
   "main": "./worker.ts",
   "compatibility_date": "2026-08-01",
+
+  // Production is reachable at vulinh.dev only. Leaving this at its default of
+  // true would publish the same site at blog-prod.<subdomain>.workers.dev,
+  // which duplicates the content on a hostname the zone settings do not cover.
+  "workers_dev": false,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

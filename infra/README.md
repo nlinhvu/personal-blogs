@@ -23,6 +23,32 @@ AWS_SECRET_ACCESS_KEY           # R2 secret         (backend only)
 The two `AWS_*` names are what the S3 backend reads. They hold R2 credentials,
 not AWS ones.
 
+## API token permissions
+
+Two credentials, deliberately separate (ADR-0007). The Cloudflare API token
+never touches state; the R2 key never touches Cloudflare resources.
+
+### `cf-prod-infra` — Cloudflare API token
+
+| Group | Permission | Used for |
+|---|---|---|
+| Zone | Zone / Edit | create the zone |
+| Zone | Zone Settings / Edit | ssl, always_use_https, automatic_https_rewrites, min_tls_version, tls_1_3 |
+| Zone | DNS / Edit | the apex record the custom domain creates |
+| Account | Workers Scripts / Edit | bind a Worker to a hostname |
+
+Zone Resources must be **All zones from an account**, not a single zone: a
+zone-scoped token cannot create a zone, because the zone does not exist yet to
+scope to. Narrow it to the specific zone later if the token is ever reissued.
+
+### `r2-state` — R2 API token (S3-compatible)
+
+Object Read & Write, restricted to the `vulinh-tofu-state` bucket. Exported as
+`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`. R2 tokens scope per bucket, not
+per key prefix, so this one credential reaches every environment's state. Only
+the infrastructure pipeline holds it, and that pipeline sits behind an approval
+gate.
+
 ## State locking
 
 `use_lockfile = true` relies on S3 conditional writes (`If-None-Match`).
