@@ -9,6 +9,12 @@ on:
       - "scripts/**"
       - "package.json"
       - "package-lock.json"
+      # The pipeline tests itself. Without these, a change to the workflow,
+      # its composite action or its helper scripts merges without ever running,
+      # and a broken pipeline is only discovered on the next content change.
+      - ".github/workflows/site-deploy.yml"
+      - ".github/actions/build-site/**"
+      - ".github/scripts/**"
 
 permissions: {}
 
@@ -46,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           URL="${{ vars.STAGING_URL }}"
-          test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/")" = "200"
+          .github/scripts/wait-for-http-200.sh "$URL/"
           test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/vi")" = "200"
           curl -sSI "$URL/" | grep -qi 'x-robots-tag: noindex, nofollow'
           echo "staging smoke passed"
@@ -71,7 +77,7 @@ jobs:
       - name: Smoke test production
         run: |
           set -euo pipefail
-          test "$(curl -sS -o /dev/null -w '%{http_code}' https://vulinh.dev/)" = "200"
+          .github/scripts/wait-for-http-200.sh https://vulinh.dev/
           curl -sS https://vulinh.dev/blog/hello-bilingual \
             | grep -q 'rel="canonical" href="https://vulinh.dev/blog/hello-bilingual"'
           curl -sSI https://vulinh.dev/ | grep -qi 'x-content-type-options: nosniff'
