@@ -1,0 +1,8 @@
+# Tag slugs are ASCII kebab-case and shared across locales.
+# Only the display label is translated. Never localise the slug.
+spring-boot:
+  en: "Spring Boot"
+  vi: "Spring Boot"
+jvm-internals:
+  en: "JVM Internals"
+  vi: "Bên trong JVM"

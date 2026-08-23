@@ -1,0 +1,5 @@
+# Shared across both languages. The directory name is the slug and the
+# pairing key — it is deliberately not a field in here.
+pubDate: 2026-08-21T09:00:00+07:00
+tags: [spring-boot]
+source: en
