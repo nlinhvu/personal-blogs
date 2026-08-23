@@ -31,11 +31,20 @@ variable "caa_issuers" {
 
 variable "bot_fight_mode" {
   description = <<-EOT
-    Bot Fight Mode challenges requests matching known bot patterns. It is free
-    on every plan, but it cannot be customised and cannot be skipped by a WAF
-    custom rule, so it may also challenge legitimate automation such as the
-    curl-based smoke tests in .github/workflows.
+    Bot Fight Mode challenges requests matching known bot patterns.
+
+    Off by default, and that is a decision rather than an oversight. Enabling it
+    forces JavaScript Detections on, which injects an inline script into every
+    HTML response. This zone delivers its Content-Security-Policy through a
+    <meta> tag, and Cloudflare only adds a nonce to injected scripts when it can
+    parse a CSP response header, so the injected script would be blocked on
+    every page view. The signal it gathers is also unusable without an
+    Enterprise Bot Management subscription. See ADR-0009.
+
+    A static blog with no login, no forms and no write path has nothing here
+    worth that cost. When an endpoint does appear, protect that endpoint with
+    Turnstile instead of the whole zone with this.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
