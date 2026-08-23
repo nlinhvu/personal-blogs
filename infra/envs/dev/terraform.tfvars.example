@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and fill in, or export TF_VAR_cloudflare_account_id
+# instead. terraform.tfvars is gitignored; this example file is not.
+#
+# Account ID of the dev Cloudflare account. Not a secret: it appears in
+# dashboard URLs and CI logs. The API token is the secret.
+cloudflare_account_id = "c25391a0526836e3f7df75c9068c7a8e"

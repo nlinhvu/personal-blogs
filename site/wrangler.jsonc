@@ -19,6 +19,29 @@
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
+  },
+
+  // Named environments. Both live in the dev Cloudflare account and are served
+  // from *.workers.dev, which is why they override the top-level workers_dev.
+  // Everything else — main, assets, compatibility_date, observability — is an
+  // inheritable key and is taken from the top-level config above. Only vars is
+  // non-inheritable, so it is declared here for each environment.
+  //
+  // IS_DEV here is a RUNTIME binding, reserved for Phase 3 route handlers.
+  // The noindex header is decided at BUILD time from the shell variable of the
+  // same name, read by src/integrations/emit-headers.ts. Deploying staging
+  // therefore means `IS_DEV=true npm run build` first; this block does not do it.
+  "env": {
+    "staging": {
+      "name": "blog-staging",
+      "workers_dev": true,
+      "vars": { "IS_DEV": "true" }
+    },
+    "preview": {
+      "name": "blog-preview",
+      "workers_dev": true,
+      "vars": { "IS_DEV": "true" }
+    }
   }
   // No account_id here on purpose: the account comes from the wrangler
   // authentication profile locally, and from CLOUDFLARE_ACCOUNT_ID in CI.
