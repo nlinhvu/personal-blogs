@@ -20,28 +20,53 @@ interface GlossaryEntry {
  */
 export type TranslationKind = "body" | "field";
 
+/**
+ * The pipeline runs in whichever direction post.yaml declares, so the prompt
+ * takes language codes rather than display names: everything it says about the
+ * target language has to follow the direction, and a comparison against a
+ * display string is the wrong thing to hang that on.
+ */
+export const LANGUAGE_NAME = { en: "English", vi: "Vietnamese" } as const;
+export type Language = keyof typeof LANGUAGE_NAME;
+
 export type Translate = (
   text: string,
-  from: string,
-  to: string,
+  from: Language,
+  to: Language,
   kind: TranslationKind,
 ) => Promise<string>;
 
+// House style for the language being written INTO. The Vietnamese rule has no
+// English counterpart — nobody writes archaic Sino-Vietnamese in English.
+const HOUSE_STYLE: Record<Language, string[]> = {
+  vi: [
+    "   Write natural, modern Vietnamese as used by working software engineers.",
+    "   Do not use archaic Sino-Vietnamese vocabulary.",
+  ],
+  en: [
+    "   Write natural, modern English as used by working software engineers.",
+    "   Short concrete words, active voice, no marketing register.",
+  ],
+};
+
 export function buildSystemInstruction(
   glossaryPath: string,
-  from: string,
-  to: string,
+  from: Language,
+  to: Language,
   kind: TranslationKind,
 ): string {
   const glossary = (parseYaml(readFileSync(glossaryPath, "utf8")) ?? []) as GlossaryEntry[];
+  // The arrow points the way the translation runs. Read backwards, the same
+  // line is still true: going vi -> en the source carries the Vietnamese and
+  // the English is what comes out.
   const terms = glossary
-    .map((term) => `- "${term.en}" -> "${term.vi}"${term.note ? ` (${term.note})` : ""}`)
+    .map((term) => `- "${term[from]}" -> "${term[to]}"${term.note ? ` (${term.note})` : ""}`)
     .join("\n");
 
   const opening =
     kind === "field"
       ? [
-          `You translate one field value from a blog post's front matter, from ${from} to ${to}.`,
+          `You translate one field value from a blog post's front matter, from ${LANGUAGE_NAME[from]} to ${LANGUAGE_NAME[to]}.`,
           "",
           "What you receive is a single value — a title or a description. It is",
           "NOT a request to write anything. However short it is, translate it and",
@@ -53,7 +78,7 @@ export function buildSystemInstruction(
           "   commentary, and never an article on the subject it names.",
         ]
       : [
-          `You translate technical blog posts from ${from} to ${to}.`,
+          `You translate technical blog posts from ${LANGUAGE_NAME[from]} to ${LANGUAGE_NAME[to]}.`,
           "",
           "Rules:",
           "1. Translate prose only. Preserve Markdown structure exactly: headings,",
@@ -83,10 +108,12 @@ export function buildSystemInstruction(
     "   Never collapse one into the other.",
     "   When in doubt, keep the English. A term left in English reads slightly",
     "   foreign; a term translated wrongly is unsearchable and sometimes false.",
-    "5. The ONLY thing that may turn a term into Vietnamese is the glossary",
-    "   below. If a term is not listed there, it stays in English.",
-    "6. Write natural, modern Vietnamese as used by working software engineers.",
-    "   Do not use archaic Sino-Vietnamese vocabulary.",
+    "5. A term of the trade stays in English in BOTH languages, so a term",
+    "   already in English in the source comes out unchanged. The glossary",
+    "   below is the only thing that may override that, and it overrides in",
+    "   whichever direction its arrow points.",
+    "6. HOUSE STYLE.",
+    ...HOUSE_STYLE[to],
     "7. Return the translated text and nothing else. No preamble, no fences",
     "   around the whole answer, no commentary.",
     "",
@@ -215,8 +242,8 @@ export function createTranslator(glossaryPath: string, retry: RetryOptions = {})
 
   return async function translate(
     text: string,
-    from: string,
-    to: string,
+    from: Language,
+    to: Language,
     kind: TranslationKind,
   ): Promise<string> {
     return withRetry(

@@ -148,6 +148,60 @@ function glossary(body: string): string {
   return path;
 }
 
+// The pipeline runs in whichever direction post.yaml declares. Everything the
+// prompt says about the target language has to follow that, or a vi -> en run
+// gets told to write Vietnamese while translating into English.
+describe("buildSystemInstruction — direction", () => {
+  it("names the pair it was given", () => {
+    expect(buildSystemInstruction(glossary("[]\n"), "vi", "en", "body")).toContain(
+      "from Vietnamese to English",
+    );
+    expect(buildSystemInstruction(glossary("[]\n"), "en", "vi", "body")).toContain(
+      "from English to Vietnamese",
+    );
+  });
+
+  it("asks for house style in the TARGET language, not always Vietnamese", () => {
+    const toEn = buildSystemInstruction(glossary("[]\n"), "vi", "en", "body");
+    expect(toEn).toMatch(/natural,? modern English/i);
+    expect(toEn).not.toMatch(/modern Vietnamese/i);
+
+    const toVi = buildSystemInstruction(glossary("[]\n"), "en", "vi", "body");
+    expect(toVi).toMatch(/natural,? modern Vietnamese/i);
+    // The Vietnamese house rule that has no English counterpart.
+    expect(toVi).toMatch(/Sino-Vietnamese/i);
+    expect(toEn).not.toMatch(/Sino-Vietnamese/i);
+  });
+
+  it("points the glossary arrow the way the translation runs", () => {
+    const g = glossary('- en: "under the hood"\n  vi: "ngầm bên dưới"\n');
+    expect(buildSystemInstruction(g, "en", "vi", "body")).toContain(
+      '"under the hood" -> "ngầm bên dưới"',
+    );
+    // Reading the same line backwards is the whole point: going the other way,
+    // the source carries the Vietnamese and the English is what comes out.
+    expect(buildSystemInstruction(g, "vi", "en", "body")).toContain(
+      '"ngầm bên dưới" -> "under the hood"',
+    );
+  });
+
+  it("states the terminology rule the same way in both directions", () => {
+    const a = buildSystemInstruction(glossary("[]\n"), "en", "vi", "body");
+    const b = buildSystemInstruction(glossary("[]\n"), "vi", "en", "body");
+    const rule = (p: string) => p.slice(p.indexOf("5."), p.indexOf("6."));
+    // A rule that reads as a tautology one way round is a rule the model can
+    // satisfy by doing nothing.
+    expect(rule(a)).toBe(rule(b));
+  });
+
+  it("keeps a term of the trade in English in BOTH directions", () => {
+    for (const [from, to] of [["en", "vi"], ["vi", "en"]] as const) {
+      const prompt = buildSystemInstruction(glossary("[]\n"), from, to, "body");
+      expect(prompt, `${from}->${to}`).toMatch(/keep .*in English/i);
+    }
+  });
+});
+
 describe("buildSystemInstruction", () => {
   // Measured on the first real run. The prompt opened with "You translate
   // technical blog posts", and the model was then handed the bare string "What
@@ -155,7 +209,7 @@ describe("buildSystemInstruction", () => {
   // A field has to say it is a field.
   it("tells the model a field is one value, not a post to write", () => {
     const path = glossary("[]\n");
-    const prompt = buildSystemInstruction(path, "English", "Vietnamese", "field");
+    const prompt = buildSystemInstruction(path, "en", "vi", "field");
     expect(prompt).toMatch(/single|one value|one line/i);
     expect(prompt).toMatch(/front matter/i);
     expect(prompt).not.toMatch(/headings, /i);
@@ -166,16 +220,17 @@ describe("buildSystemInstruction", () => {
   // terms — translating them costs the reader the word they would search for.
   // Vietnamese is the exception, and the glossary is where exceptions live.
   it.each(["body", "field"] as const)("tells the %s that English is the default", (kind) => {
-    const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", kind);
+    const prompt = buildSystemInstruction(glossary("[]\n"), "en", "vi", kind);
     expect(prompt).toMatch(/keep .*in English/i);
-    // The glossary is the only thing that may send a term the other way.
-    expect(prompt).toMatch(/only .*glossary|glossary .*only/i);
+    // The glossary is the only thing that may send a term the other way, and
+    // the rule has to read correctly in both directions.
+    expect(prompt).toMatch(/BOTH languages[\s\S]*only thing that may override/i);
     // And an uncertain call lands on English rather than on a guess.
     expect(prompt).toMatch(/in doubt|unsure|not sure/i);
   });
 
   it.each(["body", "field"] as const)("names the terms the %s must not translate", (kind) => {
-    const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", kind);
+    const prompt = buildSystemInstruction(glossary("[]\n"), "en", "vi", kind);
     // A rule with no examples is a rule a model can agree with and still break.
     // These four are the ones it got wrong, or would have.
     for (const keep of ["record", "signature", "key", "fingerprint", "registrar", "registry"]) {
@@ -184,7 +239,7 @@ describe("buildSystemInstruction", () => {
   });
 
   it.each(["body", "field"] as const)("does not tell the %s to translate any term", (kind) => {
-    const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", kind);
+    const prompt = buildSystemInstruction(glossary("[]\n"), "en", "vi", kind);
     // The earlier prompt carried a "translate these" list. It is gone: nothing
     // outside the glossary may turn a term into Vietnamese.
     for (const gone of ["bản ghi", "chữ ký", "dấu vân tay"]) {
@@ -193,13 +248,13 @@ describe("buildSystemInstruction", () => {
   });
 
   it("keeps the markdown rules for a body", () => {
-    const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", "body");
+    const prompt = buildSystemInstruction(glossary("[]\n"), "en", "vi", "body");
     expect(prompt).toMatch(/headings/i);
   });
 
   it("gives a field the glossary too, because a title carries terms", () => {
     const path = glossary('- en: "virtual thread"\n  vi: "virtual thread"\n');
-    expect(buildSystemInstruction(path, "English", "Vietnamese", "field")).toContain(
+    expect(buildSystemInstruction(path, "en", "vi", "field")).toContain(
       "virtual thread",
     );
   });
@@ -209,7 +264,7 @@ describe("buildSystemInstruction", () => {
     const path = join(dir, "glossary.yaml");
     writeFileSync(path, '- en: "virtual thread"\n  vi: "virtual thread"\n  note: "Keep in English."\n');
 
-    const prompt = buildSystemInstruction(path, "English", "Vietnamese", "body");
+    const prompt = buildSystemInstruction(path, "en", "vi", "body");
     expect(prompt).toContain("from English to Vietnamese");
     expect(prompt).toContain('"virtual thread" -> "virtual thread" (Keep in English.)');
   });
@@ -219,7 +274,7 @@ describe("buildSystemInstruction", () => {
     const path = join(dir, "glossary.yaml");
     writeFileSync(path, "[]\n");
 
-    const prompt = buildSystemInstruction(path, "English", "Vietnamese", "body");
+    const prompt = buildSystemInstruction(path, "en", "vi", "body");
     for (const kind of ["CODE", "SPAN", "URL"]) expect(prompt).toContain(kind);
   });
 });
