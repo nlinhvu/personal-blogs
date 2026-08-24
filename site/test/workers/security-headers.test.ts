@@ -57,6 +57,8 @@ describe("markup stays inside the policy", () => {
     "https://vulinh.dev/vi",
     "https://vulinh.dev/blog/hello-bilingual",
     "https://vulinh.dev/vi/blog/hello-bilingual",
+    "https://vulinh.dev/tags/spring-boot",
+    "https://vulinh.dev/vi/tags/spring-boot",
   ];
 
   it.each(pages)("carries no inline style attribute: %s", async (url) => {

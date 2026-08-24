@@ -1,0 +1,43 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import LanguageSwitcher from "../../components/LanguageSwitcher.astro";
+import { postPath, tagPath, feedPath } from "../../lib/urls";
+import { usedTags } from "../../lib/tags";
+import { readTagRegistry } from "../../loaders/bilingual-post";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("blog", ({ data }) => data.lang === "en");
+  return usedTags(entries).map((tag) => ({
+    params: { tag },
+    props: {
+      tag,
+      entries: entries
+        .filter((entry) => entry.data.tags.includes(tag))
+        .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()),
+    },
+  }));
+}
+
+const { tag, entries } = Astro.props;
+const label = readTagRegistry("../content")[tag].en;
+---
+<BaseLayout
+  title={`${label} — vulinh.dev`}
+  description={`Posts tagged ${label}.`}
+  lang="en"
+  path={tagPath(tag, "en")}
+  alternatePath={tagPath(tag, "vi")}
+  defaultPath={tagPath(tag, "en")}
+>
+  <Fragment slot="head">
+    <link rel="alternate" type="application/rss+xml" href={feedPath("en")} />
+  </Fragment>
+  <nav><LanguageSwitcher lang="en" href={tagPath(tag, "vi")} /></nav>
+  <h1>{label}</h1>
+  <ul>
+    {entries.map((entry) => (
+      <li><a href={postPath(entry.data.slug, "en")}>{entry.data.title}</a></li>
+    ))}
+  </ul>
+</BaseLayout>

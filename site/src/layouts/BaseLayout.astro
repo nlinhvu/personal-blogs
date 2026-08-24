@@ -30,6 +30,9 @@ const site = Astro.site!.toString();
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Per-page additions to <head>: feed autodiscovery on tag pages, and
+         whatever a later page needs. Pages fill it with <Fragment slot="head">. -->
+    <slot name="head" />
   </head>
   <body class="min-h-screen bg-[var(--color-page)] text-[var(--color-ink)] antialiased">
     <div class="mx-auto max-w-3xl px-5 py-10">

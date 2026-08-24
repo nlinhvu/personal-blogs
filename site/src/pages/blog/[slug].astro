@@ -2,7 +2,8 @@
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import LanguageSwitcher from "../../components/LanguageSwitcher.astro";
-import { postPath } from "../../lib/urls";
+import { postPath, tagPath } from "../../lib/urls";
+import { readTagRegistry } from "../../loaders/bilingual-post";
 
 export async function getStaticPaths() {
   const entries = await getCollection("blog", ({ data }) => data.lang === "en");
@@ -30,4 +31,11 @@ const alternatePath = postPath(entry.data.slug, "vi");
     </time>
     <Content />
   </article>
+  <ul class="mt-8 flex gap-3 text-sm">
+    {entry.data.tags.map((tag) => (
+      <li>
+        <a class="underline" href={tagPath(tag, "en")}>{readTagRegistry("../content")[tag].en}</a>
+      </li>
+    ))}
+  </ul>
 </BaseLayout>
