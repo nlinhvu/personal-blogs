@@ -4,10 +4,13 @@ import { pathToFileURL } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { extractProtected, restoreProtected, assertProtectedIntact } from "./lib/protect";
 import { splitFrontmatter, joinFrontmatter, translatableEntries } from "./lib/frontmatter";
-import { createTranslator, type Translate, type TranslationKind } from "./lib/gemini";
-
-const LANGUAGE_NAME = { en: "English", vi: "Vietnamese" } as const;
-type Language = keyof typeof LANGUAGE_NAME;
+import {
+  createTranslator,
+  LANGUAGE_NAME,
+  type Language,
+  type Translate,
+  type TranslationKind,
+} from "./lib/gemini";
 
 export interface TranslateOptions {
   contentRoot: string;
@@ -61,7 +64,7 @@ async function translateGuarded(
   kind: TranslationKind,
 ): Promise<string> {
   const { text, tokens } = extractProtected(source);
-  const translated = await translate(text, LANGUAGE_NAME[from], LANGUAGE_NAME[to], kind);
+  const translated = await translate(text, from, to, kind);
   assertPlausibleLength(text, translated, label);
   const restored = restoreProtected(translated, tokens);
   assertProtectedIntact(source, restored);

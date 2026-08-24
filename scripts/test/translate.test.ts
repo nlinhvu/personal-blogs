@@ -203,7 +203,10 @@ describe("translatePost", () => {
     rmSync(root, { recursive: true });
   });
 
-  it("names both languages when it asks the model to translate", async () => {
+  // The callback receives language CODES, not display names. The prompt is what
+  // turns a code into "English"; a caller that only needs the direction should
+  // not have to parse a sentence to get it.
+  it("hands the model the direction as language codes", async () => {
     const root = postDir({ "post.yaml": META, "en.md": EN });
     const pairs: string[] = [];
     await translatePost({
@@ -214,7 +217,7 @@ describe("translatePost", () => {
         return fakeTranslate(text);
       },
     });
-    expect(new Set(pairs)).toEqual(new Set(["English->Vietnamese"]));
+    expect(new Set(pairs)).toEqual(new Set(["en->vi"]));
     rmSync(root, { recursive: true });
   });
 
