@@ -1,0 +1,6 @@
+# The NEWER published fixture. Shares tag "alpha" with first-post on purpose:
+# without a tag carrying two published posts, the tag pages have nothing to
+# order and the ordering assertions cannot run.
+pubDate: 2026-02-20T09:00:00+07:00
+tags: [alpha, beta]
+source: en

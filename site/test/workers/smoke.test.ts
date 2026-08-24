@@ -1,6 +1,11 @@
 import { SELF } from "cloudflare:test";
 import { describe, it, expect } from "vitest";
 
+// These run against a site built from site/test/fixtures/content, NOT the real
+// posts — see site/test/wrangler.test.jsonc. Every slug below is a fixture slug,
+// and nothing in content/ is allowed to matter here: publishing a post, sending
+// one back to draft or renaming a slug must never turn this suite red.
+
 // The deployment host is configuration, not behaviour: SITE_URL differs between
 // production, staging and preview, so these tests assert the URL contract —
 // absolute links, correct paths, reciprocal hreflang — and leave the exact host
@@ -80,8 +85,9 @@ describe("feeds and sitemap", () => {
   });
 
   // Newest first is the whole reason a feed and an index are ordered at all: a
-  // reader shows the top item as the latest. Needs two posts to mean anything,
-  // which is why it could not be written until the second one existed.
+  // reader reads the top item as the latest. It needs two published posts to
+  // mean anything, which the fixture set guarantees — first-post and
+  // second-post share the tag "alpha" for exactly this reason.
   function descending(values: number[], label: string) {
     expect(values.length, `${label} needs at least two entries to order`).toBeGreaterThan(1);
     for (let i = 1; i < values.length; i++) {
@@ -97,7 +103,7 @@ describe("feeds and sitemap", () => {
     descending(dates, path);
   });
 
-  it.each(["/", "/vi", "/tags/spring-boot", "/vi/tags/spring-boot"])(
+  it.each(["/", "/vi", "/tags/alpha", "/vi/tags/alpha"])(
     "orders the entries on %s newest first",
     async (path) => {
       const html = await (await SELF.fetch(`https://vulinh.dev${path}`)).text();
@@ -130,10 +136,10 @@ describe("feeds and sitemap", () => {
   it("links exactly one feed per page, in the page's own language", async () => {
     for (const [path, feed] of [
       ["/", "/rss.xml"],
-      ["/blog/hello-bilingual", "/rss.xml"],
-      ["/tags/spring-boot", "/rss.xml"],
+      ["/blog/first-post", "/rss.xml"],
+      ["/tags/alpha", "/rss.xml"],
       ["/vi", "/vi/rss.xml"],
-      ["/vi/tags/spring-boot", "/vi/rss.xml"],
+      ["/vi/tags/alpha", "/vi/rss.xml"],
     ]) {
       const html = await (await SELF.fetch(`https://vulinh.dev${path}`)).text();
       const links = html.match(/type="application\/rss\+xml"/g) ?? [];
@@ -150,16 +156,16 @@ describe("feeds and sitemap", () => {
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]));
     const paths = locs.map((url) => url.pathname);
 
-    expect(paths).toContain("/blog/hello-bilingual");
-    expect(paths).toContain("/vi/blog/hello-bilingual");
-    expect(paths).toContain("/tags/spring-boot");
+    expect(paths).toContain("/blog/first-post");
+    expect(paths).toContain("/vi/blog/first-post");
+    expect(paths).toContain("/tags/alpha");
     expect(new Set(locs.map((url) => url.origin)).size).toBe(1);
 
     // Reciprocal hreflang is the point of the i18n sitemap: it tells a crawler
     // the two language versions are one document, not duplicate content.
     const alternates = [...xml.matchAll(/hreflang="(\w+)" href="([^"]+)"/g)];
     const viAlternate = alternates.find(
-      (m) => m[1] === "vi" && new URL(m[2]).pathname === "/vi/blog/hello-bilingual",
+      (m) => m[1] === "vi" && new URL(m[2]).pathname === "/vi/blog/first-post",
     );
     expect(viAlternate, "the English post must point at its Vietnamese pair").toBeDefined();
 
@@ -181,15 +187,15 @@ describe("drafts", () => {
     const home = await SELF.fetch("https://vulinh.dev/");
     const isDev = home.headers.get("x-robots-tag") !== null;
 
-    const draft = await SELF.fetch("https://vulinh.dev/blog/draft-example");
+    const draft = await SELF.fetch("https://vulinh.dev/blog/hidden-post");
     const homeHtml = await home.text();
     const feed = await (await SELF.fetch("https://vulinh.dev/rss.xml")).text();
     const sitemap = await (await SELF.fetch("https://vulinh.dev/sitemap-0.xml")).text();
 
     if (isDev) {
       expect(draft.status, "a non-indexed build must serve the draft for review").toBe(200);
-      expect(homeHtml).toContain("/blog/draft-example");
-      expect(feed).toContain("/blog/draft-example");
+      expect(homeHtml).toContain("/blog/hidden-post");
+      expect(feed).toContain("/blog/hidden-post");
       return;
     }
 
@@ -199,14 +205,14 @@ describe("drafts", () => {
       ["the feed", feed],
       ["the sitemap", sitemap],
     ] as const) {
-      expect(body, `a draft must not reach ${where}`).not.toContain("/blog/draft-example");
+      expect(body, `a draft must not reach ${where}`).not.toContain("/blog/hidden-post");
     }
   });
 });
 
 describe("bilingual routing", () => {
   it("serves the English post", async () => {
-    const response = await SELF.fetch("https://vulinh.dev/blog/hello-bilingual");
+    const response = await SELF.fetch("https://vulinh.dev/blog/first-post");
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain('<html lang="en"');
@@ -215,8 +221,8 @@ describe("bilingual routing", () => {
     const vietnamese = alternateOf(html, "vi");
     const fallback = alternateOf(html, "x-default");
 
-    expect(canonical.pathname).toBe("/blog/hello-bilingual");
-    expect(vietnamese.pathname).toBe("/vi/blog/hello-bilingual");
+    expect(canonical.pathname).toBe("/blog/first-post");
+    expect(vietnamese.pathname).toBe("/vi/blog/first-post");
     // x-default points at English, the source language.
     expect(fallback.href).toBe(canonical.href);
     // One SITE_URL built all three, so they must agree on the origin.
@@ -224,7 +230,7 @@ describe("bilingual routing", () => {
   });
 
   it("serves the Vietnamese post", async () => {
-    const response = await SELF.fetch("https://vulinh.dev/vi/blog/hello-bilingual");
+    const response = await SELF.fetch("https://vulinh.dev/vi/blog/first-post");
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain('<html lang="vi"');
@@ -232,8 +238,8 @@ describe("bilingual routing", () => {
     const canonical = canonicalOf(html);
     const english = alternateOf(html, "en");
 
-    expect(canonical.pathname).toBe("/vi/blog/hello-bilingual");
-    expect(english.pathname).toBe("/blog/hello-bilingual");
+    expect(canonical.pathname).toBe("/vi/blog/first-post");
+    expect(english.pathname).toBe("/blog/first-post");
     expect(english.origin).toBe(canonical.origin);
   });
 
@@ -241,11 +247,11 @@ describe("bilingual routing", () => {
   // every mode; the status code is not configurable. The canonical link on the
   // destination page is what tells a crawler which URL is the real one.
   it("redirects a trailing slash away", async () => {
-    const response = await SELF.fetch("https://vulinh.dev/blog/hello-bilingual/", {
+    const response = await SELF.fetch("https://vulinh.dev/blog/first-post/", {
       redirect: "manual",
     });
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("/blog/hello-bilingual");
+    expect(response.headers.get("location")).toBe("/blog/first-post");
   });
 });
 

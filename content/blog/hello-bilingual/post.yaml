@@ -1,5 +1,11 @@
 # Shared across both languages. The directory name is the slug and the
 # pairing key — it is deliberately not a field in here.
+
+# Scaffolding, not writing. Kept in the repository because it documents how a
+# post is put together, but a reader landing on the home page should see
+# articles, not notes to self. Drop this line to publish it.
+draft: true
+
 pubDate: 2026-08-21T09:00:00+07:00
 tags: [spring-boot]
 source: en

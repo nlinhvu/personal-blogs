@@ -26,11 +26,11 @@ jobs:
         with:
           site-url: ${{ env.PREVIEW_URL }}
           is-dev: "true"
-      # `npm test` runs the scripts suite, then `astro build && vitest run` in
-      # site/. That rebuild would otherwise overwrite the build above with
-      # default settings: the production SITE_URL and no noindex header. Repeat
-      # the same environment so what gets tested is byte-for-byte what gets
-      # deployed.
+      # `npm test` runs the scripts suite, then builds a SECOND site, from
+      # test/fixtures/content into dist-test/, and runs the site suite against
+      # that. It no longer touches the dist/ built above. IS_DEV is still passed
+      # on: the draft assertions read X-Robots-Tag off the response to decide
+      # which half of the rule to check.
       - run: npm test
         env:
           SITE_URL: ${{ env.PREVIEW_URL }}

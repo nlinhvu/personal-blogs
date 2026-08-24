@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 // it found, or the build emits an <img> with no src at all and still goes green.
 // So this asserts the end state a reader gets — a real URL that answers 200 —
 // rather than any step on the way there.
-const PAGES = ["/blog/post-template", "/vi/blog/post-template"];
+const PAGES = ["/blog/first-post", "/vi/blog/first-post"];
 
 async function imagesOn(path: string): Promise<string[]> {
   const response = await SELF.fetch(`https://vulinh.dev${path}`);
@@ -25,7 +25,7 @@ async function imagesOn(path: string): Promise<string[]> {
 describe("images in a post", () => {
   it.each(PAGES)("%s renders its image with a real src", async (path) => {
     const sources = await imagesOn(path);
-    expect(sources.length, `${path} should show the template image`).toBeGreaterThan(0);
+    expect(sources.length, `${path} should show the fixture image`).toBeGreaterThan(0);
   });
 
   it.each(PAGES)("%s serves every image it points at", async (path) => {

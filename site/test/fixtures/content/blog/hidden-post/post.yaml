@@ -1,0 +1,9 @@
+# Never published. The draft assertions read this slug on BOTH branches: served
+# on a build that sends X-Robots-Tag, absent from page, feed and sitemap on one
+# that does not. Both languages are present so it is a finished draft, not an
+# incomplete one — the incomplete case is covered by the node loader tests.
+draft: true
+
+pubDate: 2026-03-05T09:00:00+07:00
+tags: [alpha]
+source: en

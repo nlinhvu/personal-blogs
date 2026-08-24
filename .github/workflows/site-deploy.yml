@@ -32,10 +32,11 @@ jobs:
         with:
           site-url: ${{ vars.STAGING_URL }}
           is-dev: "true"
-      # `npm test` runs `astro build && vitest run`, so it rebuilds dist/ and
-      # would otherwise overwrite the build above with default settings: the
-      # production SITE_URL and no noindex header. Repeat the same environment
-      # so what gets tested is byte-for-byte what gets deployed.
+      # `npm test` builds a SECOND site, from test/fixtures/content into
+      # dist-test/, so it no longer touches the dist/ built above. IS_DEV is
+      # still passed on: the draft assertions read X-Robots-Tag off the response
+      # to decide which half of the rule to check, so this is what exercises the
+      # "a draft IS served on a non-indexed build" branch.
       - run: npm test
         env:
           SITE_URL: ${{ vars.STAGING_URL }}
@@ -78,8 +79,11 @@ jobs:
         run: |
           set -euo pipefail
           .github/scripts/wait-for-http-200.sh https://vulinh.dev/
-          curl -sS https://vulinh.dev/blog/hello-bilingual \
-            | grep -q 'rel="canonical" href="https://vulinh.dev/blog/hello-bilingual"'
+          # A real published post, not a fixture: this asserts the deployed site,
+          # so the slug has to be one production actually serves. If this post is
+          # ever unpublished, this line has to move with it.
+          curl -sS https://vulinh.dev/blog/reading-a-ds-record \
+            | grep -q 'rel="canonical" href="https://vulinh.dev/blog/reading-a-ds-record"'
           curl -sSI https://vulinh.dev/ | grep -qi 'x-content-type-options: nosniff'
           curl -sSI https://vulinh.dev/ | grep -qi 'x-robots-tag' \
             && { echo "FAIL: production is de-indexed"; exit 1; } || true

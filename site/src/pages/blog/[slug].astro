@@ -4,6 +4,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import LanguageSwitcher from "../../components/LanguageSwitcher.astro";
 import { postPath, tagPath } from "../../lib/urls";
 import { readTagRegistry } from "../../loaders/bilingual-post";
+import { CONTENT_BASE } from "../../lib/content-base";
 
 export async function getStaticPaths() {
   const entries = await getCollection("blog", ({ data }) => data.lang === "en");
@@ -34,7 +35,7 @@ const alternatePath = postPath(entry.data.slug, "vi");
   <ul class="mt-8 flex gap-3 text-sm">
     {entry.data.tags.map((tag) => (
       <li>
-        <a class="underline" href={tagPath(tag, "en")}>{readTagRegistry("../content")[tag].en}</a>
+        <a class="underline" href={tagPath(tag, "en")}>{readTagRegistry(CONTENT_BASE)[tag].en}</a>
       </li>
     ))}
   </ul>

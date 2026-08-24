@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+
+  // NEVER DEPLOYED. This config exists so the workers suite can run against a
+  // site built from test/fixtures/content instead of the real posts, served out
+  // of dist-test/ instead of dist/.
+  //
+  // The asset options below are copied from ../wrangler.jsonc and MUST stay
+  // equal to it: html_handling is what turns a trailing slash into a redirect,
+  // and not_found_handling is what serves the 404 page — both are asserted by
+  // the suite, so a silent divergence here would mean the tests pass while
+  // production behaves differently. test/node/wrangler-parity.test.ts fails the
+  // moment the two drift apart.
+  "name": "blog-test",
+  "main": "../worker.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": false,
+  "assets": {
+    "directory": "../dist-test",
+    "binding": "ASSETS",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}

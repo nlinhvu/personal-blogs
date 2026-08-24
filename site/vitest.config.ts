@@ -11,9 +11,12 @@ export default defineConfig({
   test: {
     projects: [
       {
-        // Runs inside workerd against the real Worker and its static assets.
-        // Everything importing "cloudflare:test" belongs here.
-        plugins: [cloudflareTest({ wrangler: { configPath: "./wrangler.jsonc" } })],
+        // Runs inside workerd against the real Worker and a site built from
+        // test/fixtures/content. Everything importing "cloudflare:test" belongs
+        // here. The config is the test one, not ./wrangler.jsonc: it points the
+        // asset binding at dist-test/ so the suite never depends on which posts
+        // happen to be published today.
+        plugins: [cloudflareTest({ wrangler: { configPath: "./test/wrangler.test.jsonc" } })],
         test: {
           name: "workers",
           include: ["test/workers/**/*.test.ts"],

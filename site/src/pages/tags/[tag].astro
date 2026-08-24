@@ -6,6 +6,7 @@ import { tagPath } from "../../lib/urls";
 import PostList from "../../components/PostList.astro";
 import { usedTags } from "../../lib/tags";
 import { readTagRegistry } from "../../loaders/bilingual-post";
+import { CONTENT_BASE } from "../../lib/content-base";
 
 export async function getStaticPaths() {
   const entries = await getCollection("blog", ({ data }) => data.lang === "en");
@@ -21,7 +22,7 @@ export async function getStaticPaths() {
 }
 
 const { tag, entries } = Astro.props;
-const label = readTagRegistry("../content")[tag].en;
+const label = readTagRegistry(CONTENT_BASE)[tag].en;
 ---
 <BaseLayout
   title={`${label} — vulinh.dev`}

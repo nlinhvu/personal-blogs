@@ -1,0 +1,8 @@
+# Fixture tag registry. Deliberately NOT the real tags: a test asserting on
+# "alpha" cannot be misread as one that depends on what the blog writes about.
+alpha:
+  en: "Alpha"
+  vi: "Alpha"
+beta:
+  en: "Beta"
+  vi: "Beta"

@@ -6,8 +6,14 @@ import sitemap from "@astrojs/sitemap";
 
 const SITE_URL = process.env.SITE_URL ?? "https://vulinh.dev";
 
+// The test build writes somewhere else on purpose. CI builds the real site,
+// then runs the suite, then deploys what it built — so a test run that wrote
+// into dist/ would replace the deployable site with one made of fixtures.
+const OUT_DIR = process.env.OUT_DIR ?? "./dist";
+
 export default defineConfig({
   site: SITE_URL,
+  outDir: OUT_DIR,
   output: "static",
   trailingSlash: "never",
   build: { format: "file" },

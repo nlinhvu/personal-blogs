@@ -55,10 +55,10 @@ describe("markup stays inside the policy", () => {
   const pages = [
     "https://vulinh.dev/",
     "https://vulinh.dev/vi",
-    "https://vulinh.dev/blog/hello-bilingual",
-    "https://vulinh.dev/vi/blog/hello-bilingual",
-    "https://vulinh.dev/tags/spring-boot",
-    "https://vulinh.dev/vi/tags/spring-boot",
+    "https://vulinh.dev/blog/first-post",
+    "https://vulinh.dev/vi/blog/first-post",
+    "https://vulinh.dev/tags/alpha",
+    "https://vulinh.dev/vi/tags/alpha",
   ];
 
   it.each(pages)("carries no inline style attribute: %s", async (url) => {
@@ -89,7 +89,7 @@ describe("markup stays inside the policy", () => {
   });
 
   it("colours code through Prism classes, not inline styles", async () => {
-    const html = await (await SELF.fetch("https://vulinh.dev/blog/hello-bilingual")).text();
+    const html = await (await SELF.fetch("https://vulinh.dev/blog/first-post")).text();
     expect(html).toContain('<pre class="language-java"');
     expect(html).toContain('<span class="token keyword">');
   });
