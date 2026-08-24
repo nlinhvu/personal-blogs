@@ -12,8 +12,11 @@
     "test": "astro build && vitest run"
   },
   "dependencies": {
+    "@tailwindcss/typography": "0.5.20",
+    "@tailwindcss/vite": "4.3.3",
     "astro": "7.2.4",
     "gray-matter": "4.0.3",
+    "tailwindcss": "4.3.3",
     "yaml": "2.8.1"
   },
   "devDependencies": {

@@ -1,0 +1,118 @@
+/* Syntax colours for Prism, delivered as a stylesheet instead of inline
+   `style` attributes. That is the whole point: CSP cannot whitelist a style
+   ATTRIBUTE by hash, only `unsafe-inline` or `unsafe-hashes` would let one
+   through, so any highlighter that paints tokens inline arrives colourless.
+   Classes cost nothing and stay inside `style-src 'self'`.
+
+   The palette is GitHub Dark, the same colours the site rendered before, and
+   the block stays dark in both page themes — a code listing reads as a screen,
+   not as paper, and one palette is one thing to maintain instead of two. */
+:root {
+  --code-bg: #24292e;
+  --code-fg: #e1e4e8;
+  --code-comment: #6a737d;
+  --code-keyword: #f97583;
+  --code-string: #9ecbff;
+  --code-literal: #79b8ff;
+  --code-function: #b392f0;
+  --code-variable: #ffab70;
+}
+
+pre[class*="language-"],
+code[class*="language-"] {
+  color: var(--code-fg);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  line-height: 1.7;
+  tab-size: 4;
+  hyphens: none;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+}
+
+pre[class*="language-"] {
+  background: var(--code-bg);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+}
+
+/* Tailwind Typography wraps inline code in literal backticks. Both of them go:
+   the monospace face and the tint already say "this is code". */
+.prose :where(code):not(:where(pre *))::before,
+.prose :where(code):not(:where(pre *))::after {
+  content: none;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+.token.punctuation,
+.token.operator {
+  color: var(--code-fg);
+}
+
+.token.keyword,
+.token.atrule,
+.token.rule,
+.token.important,
+.token.selector,
+.token.deleted {
+  color: var(--code-keyword);
+}
+
+.token.string,
+.token.char,
+.token.attr-value,
+.token.regex,
+.token.inserted {
+  color: var(--code-string);
+}
+
+.token.number,
+.token.boolean,
+.token.constant,
+.token.symbol,
+.token.class-name,
+.token.builtin,
+.token.tag,
+.token.property,
+.token.url {
+  color: var(--code-literal);
+}
+
+.token.function,
+.token.attr-name,
+.token.generics {
+  color: var(--code-function);
+}
+
+.token.variable,
+.token.entity {
+  color: var(--code-variable);
+}
+
+/* Prism aliases a Java annotation to `punctuation`, so this rule has to come
+   after the punctuation rule to win on source order. */
+.token.annotation {
+  color: var(--code-function);
+}
+
+.token.namespace {
+  opacity: 0.7;
+}
+
+.token.bold,
+.token.important {
+  font-weight: 600;
+}
+
+.token.italic {
+  font-style: italic;
+}

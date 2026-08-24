@@ -23,7 +23,7 @@ const alternatePath = postPath(entry.data.slug, "vi");
   defaultPath={path}
 >
   <nav><LanguageSwitcher lang="en" href={alternatePath} /></nav>
-  <article>
+  <article class="prose prose-zinc dark:prose-invert max-w-none">
     <h1>{entry.data.title}</h1>
     <time datetime={entry.data.pubDate.toISOString()}>
       {entry.data.pubDate.toISOString().slice(0, 10)}
