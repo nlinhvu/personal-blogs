@@ -23,6 +23,9 @@ export interface Extraction {
 
 const placeholderFor = (kind: ProtectedKind, index: number) => `⟦${kind}_${index}⟧`;
 
+// Anything shaped like a placeholder, whether or not it is one of ours.
+const PLACEHOLDER_SHAPE = /⟦[A-Z]+_\d+⟧/g;
+
 interface Rule {
   kind: ProtectedKind;
   pattern: RegExp;
@@ -125,12 +128,32 @@ const occurrences = (haystack: string, needle: string): number =>
   haystack.split(needle).length - 1;
 
 export function restoreProtected(text: string, tokens: ProtectedToken[]): string {
-  // Every placeholder is counted BEFORE anything is put back, on the model's
-  // own output. Counting as we go would be wrong in both directions: a restored
-  // code block may itself contain placeholder-shaped text — this blog writes
-  // about this guard — and a token duplicated by the model would otherwise slip
-  // through, since replace() swaps only the first hit and the second reaches
-  // the published file as literal ⟦URL_0⟧ text.
+  // Every check below runs on the model's own output, BEFORE anything is put
+  // back. That ordering is what makes them safe: a restored code block may
+  // itself contain placeholder-shaped text — this blog writes about this guard
+  // — and checking afterwards would flag the author's own example.
+  //
+  // Anything placeholder-shaped that was never handed out is an invention.
+  // Measured: given a bare title to translate, a model wrote a whole blog post
+  // and decorated it with eight placeholders of its own. The source had no
+  // tokens, so every later check had nothing to compare against.
+  const expected = new Set(
+    tokens.map((token, index) => placeholderFor(token.kind, index)),
+  );
+  const invented = [...new Set(text.match(PLACEHOLDER_SHAPE) ?? [])].filter(
+    (found) => !expected.has(found),
+  );
+  if (invented.length > 0) {
+    throw new Error(
+      `The translated text contains ${invented.length} placeholder${
+        invented.length > 1 ? "s" : ""
+      } that were never sent to it: ${invented.join(", ")}. The model invented them, so the answer is not a translation of the text it was given.`,
+    );
+  }
+
+  // A token duplicated by the model would otherwise slip through, since
+  // replace() swaps only the first hit and the second reaches the published
+  // file as literal ⟦URL_0⟧ text.
   for (let index = 0; index < tokens.length; index += 1) {
     const placeholder = placeholderFor(tokens[index].kind, index);
     const seen = occurrences(text, placeholder);

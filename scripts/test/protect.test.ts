@@ -224,6 +224,22 @@ describe("round trip", () => {
     expect(() => restoreProtected(doubled, tokens)).toThrow(/twice|duplicat/i);
   });
 
+  it("throws when the translation invented a placeholder that was never sent", () => {
+    // Measured on the first real run: handed the bare title "What a virtual
+    // thread does when it blocks", the model wrote a whole blog post and
+    // decorated it with eight placeholders of its own. The source had no tokens
+    // at all, so nothing downstream had anything to compare against — the
+    // invention has to be caught right here, on the model's own output.
+    const { text, tokens } = extractProtected("What a virtual thread does when it blocks");
+    expect(tokens).toHaveLength(0);
+    expect(() => restoreProtected(`${text} ⟦CODE_0⟧ ⟦SPAN_4⟧`, tokens)).toThrow(/invent/i);
+  });
+
+  it("throws when the translation invented a placeholder beyond the ones it was given", () => {
+    const { text, tokens } = extractProtected("See [the feed](/rss.xml).");
+    expect(() => restoreProtected(`${text} ⟦URL_9⟧`, tokens)).toThrow(/invent/i);
+  });
+
   it("allows a code block that itself contains placeholder-shaped text", () => {
     // This blog writes about this guard. A fenced example showing ⟦CODE_0⟧ is
     // ordinary content, and counting placeholders after the code went back in

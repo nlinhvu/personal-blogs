@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { translatePost } from "../translate";
+import { translatePost, assertPlausibleLength } from "../translate";
 
 const META = "pubDate: 2026-08-21T09:00:00+07:00\ntags: [spring-boot]\nsource: en\n";
 
@@ -181,6 +181,21 @@ describe("translatePost", () => {
     rmSync(root, { recursive: true });
   });
 
+  // Measured on the first real run: handed the 41-character title "What a
+  // virtual thread does when it blocks", the model returned 4267 characters —
+  // an entire blog post. Every span check passed, because a title carries no
+  // spans to check.
+  it("writes nothing when the model answers a title with an essay", async () => {
+    const root = postDir({ "post.yaml": META, "en.md": EN });
+    const bad = async (text: string) =>
+      text === "Hello" ? "Một bài viết rất dài. ".repeat(200) : fakeTranslate(text);
+    await expect(
+      translatePost({ contentRoot: root, slug: "a", translate: bad }),
+    ).rejects.toThrow(/title/i);
+    expect(existsSync(join(root, "blog", "a", "vi.md"))).toBe(false);
+    rmSync(root, { recursive: true });
+  });
+
   it("translates in the vi -> en direction when the source is vi", async () => {
     const root = postDir({ "post.yaml": META.replace("source: en", "source: vi"), "vi.md": EN });
     await translatePost({ contentRoot: root, slug: "a", translate: fakeTranslate });
@@ -217,5 +232,37 @@ describe("translatePost", () => {
       translatePost({ contentRoot: root, slug: "a", translate: fakeTranslate }),
     ).rejects.toThrow(/en\.md/);
     rmSync(root, { recursive: true });
+  });
+});
+
+describe("assertPlausibleLength", () => {
+  it("accepts a translation of about the same size", () => {
+    expect(() => assertPlausibleLength("Hello there", "Xin chào các bạn", "title")).not.toThrow();
+  });
+
+  it("accepts a very short string growing several times over", () => {
+    // "Why?" to "Tại sao lại như vậy?" is a fivefold growth and perfectly fine.
+    // A ratio alone would reject it, so the ceiling has a flat allowance too.
+    expect(() => assertPlausibleLength("Why?", "Tại sao lại như vậy?", "title")).not.toThrow();
+  });
+
+  it("rejects an answer that dwarfs what was asked", () => {
+    expect(() => assertPlausibleLength("A short title", "x".repeat(4000), "title")).toThrow(
+      /title/i,
+    );
+  });
+
+  it("rejects an answer that lost most of the text", () => {
+    // The other direction is a real failure too: a model that summarises
+    // instead of translating drops most of the post.
+    expect(() => assertPlausibleLength("x".repeat(4000), "Tóm lại: rất hay.", "body")).toThrow(
+      /body/i,
+    );
+  });
+
+  it("names the sizes so the author can see how far off it was", () => {
+    expect(() => assertPlausibleLength("A short title", "x".repeat(4000), "title")).toThrow(
+      /13.*4000|4000.*13/,
+    );
   });
 });

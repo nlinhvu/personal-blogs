@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { extractProtected, restoreProtected, assertProtectedIntact } from "./lib/protect";
 import { splitFrontmatter, joinFrontmatter, translatableEntries } from "./lib/frontmatter";
-import { createTranslator, type Translate } from "./lib/gemini";
+import { createTranslator, type Translate, type TranslationKind } from "./lib/gemini";
 
 const LANGUAGE_NAME = { en: "English", vi: "Vietnamese" } as const;
 type Language = keyof typeof LANGUAGE_NAME;
@@ -14,6 +14,36 @@ export interface TranslateOptions {
   slug: string;
   force?: boolean;
   translate: Translate;
+}
+
+// A translation is roughly the size of what it translated. Vietnamese runs a
+// little longer than English and a short string can grow several times over, so
+// the ceiling is generous: three times the length, or a flat 200 characters,
+// whichever is larger. Both ends matter — a model that summarises instead of
+// translating drops most of the post.
+//
+// Measured on the first real run: handed the 41-character title "What a virtual
+// thread does when it blocks", the model returned 4267 characters of blog post.
+// Every span check passed, because a title carries no spans to check.
+const LENGTH_MULTIPLE = 3;
+const LENGTH_ALLOWANCE = 200;
+
+export function assertPlausibleLength(source: string, translated: string, label: string): void {
+  const ceiling = Math.max(source.length * LENGTH_MULTIPLE, source.length + LENGTH_ALLOWANCE);
+  const floor = Math.min(source.length / LENGTH_MULTIPLE, Math.max(source.length - LENGTH_ALLOWANCE, 0));
+
+  if (translated.length > ceiling) {
+    throw new Error(
+      `The translated ${label} is ${translated.length} characters for a source of ${source.length}. ` +
+        "That is not a translation, it is a different piece of writing.",
+    );
+  }
+  if (translated.length < floor) {
+    throw new Error(
+      `The translated ${label} is ${translated.length} characters for a source of ${source.length}. ` +
+        "Most of the text did not come back.",
+    );
+  }
 }
 
 /**
@@ -27,9 +57,12 @@ async function translateGuarded(
   from: Language,
   to: Language,
   translate: Translate,
+  label: string,
+  kind: TranslationKind,
 ): Promise<string> {
   const { text, tokens } = extractProtected(source);
-  const translated = await translate(text, LANGUAGE_NAME[from], LANGUAGE_NAME[to]);
+  const translated = await translate(text, LANGUAGE_NAME[from], LANGUAGE_NAME[to], kind);
+  assertPlausibleLength(text, translated, label);
   const restored = restoreProtected(translated, tokens);
   assertProtectedIntact(source, restored);
   return restored;
@@ -63,11 +96,11 @@ export async function translatePost(options: TranslateOptions): Promise<string> 
   // instruction to be careful with it. Only its prose values travel.
   const { data, raw, body } = splitFrontmatter(readFileSync(sourcePath, "utf8"));
 
-  const translatedBody = await translateGuarded(body, from, to, options.translate);
+  const translatedBody = await translateGuarded(body, from, to, options.translate, "body", "body");
 
   const updates: Record<string, string> = {};
   for (const [key, value] of translatableEntries(data)) {
-    updates[key] = await translateGuarded(value, from, to, options.translate);
+    updates[key] = await translateGuarded(value, from, to, options.translate, key, "field");
   }
 
   // Nothing has been written yet. Every guard above throws before this line, so
