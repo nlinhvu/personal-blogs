@@ -73,6 +73,18 @@ describe("feeds and sitemap", () => {
     expect(xml).toContain(`<link>${guid.href}</link>`);
   });
 
+  it("points each feed's channel link at that language's home page", async () => {
+    const link = async (path: string) => {
+      const xml = await (await SELF.fetch(`https://vulinh.dev${path}`)).text();
+      // The channel link is the first <link>, before any <item>.
+      return new URL(xml.slice(0, xml.indexOf("<item>")).match(/<link>([^<]+)<\/link>/)![1]);
+    };
+    expect((await link("/rss.xml")).pathname).toBe("/");
+    // A Vietnamese subscriber clicking "visit website" in their reader must
+    // not land on the English home page.
+    expect((await link("/vi/rss.xml")).pathname).toBe("/vi");
+  });
+
   it("keeps the two feeds on one origin and one slug", async () => {
     const en = guidsOf(await (await SELF.fetch("https://vulinh.dev/rss.xml")).text());
     const vi = guidsOf(await (await SELF.fetch("https://vulinh.dev/vi/rss.xml")).text());

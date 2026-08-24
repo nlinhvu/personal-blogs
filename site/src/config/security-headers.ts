@@ -38,10 +38,23 @@ export function securityHeaders(isDev: boolean): HeaderPair[] {
   return headers;
 }
 
+// Astro puts a content hash in every filename under /_astro/, so the bytes
+// behind one of those URLs can never change: a new build writes a new name.
+// Without this the asset layer serves them `max-age=0, must-revalidate`, the
+// same policy the HTML gets, and every repeat visitor pays a round trip to be
+// told the stylesheet they already hold is still current.
+//
+// The document must NOT get this. Its URL carries no hash, so `immutable`
+// there would pin a reader to a page that has moved on, with no way to
+// invalidate short of changing the URL.
+const HASHED_ASSET_PATH = "/_astro/*";
+const IMMUTABLE = "public, max-age=31536000, immutable";
+
 export function buildHeadersFile(isDev: boolean): string {
   const lines = ["/*"];
   for (const [name, value] of securityHeaders(isDev)) {
     lines.push(`  ${name}: ${value}`);
   }
+  lines.push("", HASHED_ASSET_PATH, `  Cache-Control: ${IMMUTABLE}`);
   return lines.join("\n") + "\n";
 }

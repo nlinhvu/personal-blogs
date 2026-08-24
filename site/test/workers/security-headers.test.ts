@@ -94,3 +94,33 @@ describe("markup stays inside the policy", () => {
     expect(html).toContain('<span class="token keyword">');
   });
 });
+
+// Everything under /_astro/ carries a content hash in its filename, so the
+// bytes behind one of those URLs can never change. Saying so turns a
+// revalidation round trip on every repeat visit into a cache read — worth
+// having on the one render-blocking request the page makes.
+describe("cache policy for hashed assets", () => {
+  const IMMUTABLE = "public, max-age=31536000, immutable";
+
+  it("declares an immutable rule for /_astro/*", () => {
+    const file = buildHeadersFile(false);
+    expect(file).toContain("/_astro/*");
+    expect(file).toContain(`  Cache-Control: ${IMMUTABLE}`);
+  });
+
+  it("serves the hashed stylesheet immutable and the document revalidated", async () => {
+    const html = await (await SELF.fetch("https://vulinh.dev/")).text();
+    const href = html.match(/<link rel="stylesheet" href="([^"]+)"/)?.[1];
+    expect(href, "the page must link a bundled stylesheet").toBeDefined();
+    expect(href).toMatch(/^\/_astro\/.+\.css$/);
+
+    const asset = await SELF.fetch(`https://vulinh.dev${href}`);
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get("cache-control")).toBe(IMMUTABLE);
+
+    // The document must stay revalidated: its URL carries no hash, so an
+    // immutable rule there would pin a reader to a page that has moved on.
+    const doc = await SELF.fetch("https://vulinh.dev/");
+    expect(doc.headers.get("cache-control") ?? "").not.toContain("immutable");
+  });
+});

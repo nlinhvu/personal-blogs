@@ -32,3 +32,14 @@ export function feedItem(entry: FeedEntry, siteUrl: string) {
     customData: `<guid isPermaLink="true">${guid}</guid>`,
   };
 }
+
+// @astrojs/rss builds the channel <link> from `site` and always leaves a
+// trailing slash on it. This site answers a trailing slash with a 307, so the
+// one link a reader surfaces as "visit website" would be a redirect. Rewriting
+// it here keeps the whole feed on the URL contract the rest of the site keeps.
+//
+// Only the channel link is touched: it is the first <link> in the document,
+// and every item link is already absolute and slash-free.
+export function withChannelLink(xml: string, channelUrl: string): string {
+  return xml.replace(/<link>[^<]*<\/link>/, `<link>${channelUrl}</link>`);
+}
