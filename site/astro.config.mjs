@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import { emitHeaders } from "./src/integrations/emit-headers";
 import tailwindcss from "@tailwindcss/vite";
+import sitemap from "@astrojs/sitemap";
 
 const SITE_URL = process.env.SITE_URL ?? "https://vulinh.dev";
 
@@ -15,7 +16,17 @@ export default defineConfig({
     locales: ["en", "vi"],
     routing: { prefixDefaultLocale: false },
   },
-  integrations: [emitHeaders()],
+  integrations: [
+    emitHeaders(),
+    // hreflang pairs in the sitemap, so a crawler is told the two language
+    // versions are the same document rather than duplicate content.
+    sitemap({
+      i18n: {
+        defaultLocale: "en",
+        locales: { en: "en", vi: "vi" },
+      },
+    }),
+  ],
   vite: { plugins: [tailwindcss()] },
   // Prism, not the default Shiki. Shiki paints every token with an inline
   // `style` attribute, and CSP blocks those: a hash cannot whitelist a style

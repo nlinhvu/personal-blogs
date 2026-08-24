@@ -30,8 +30,15 @@ const site = Astro.site!.toString();
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <!-- Per-page additions to <head>: feed autodiscovery on tag pages, and
-         whatever a later page needs. Pages fill it with <Fragment slot="head">. -->
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="vulinh.dev"
+      href={lang === "vi" ? "/vi/rss.xml" : "/rss.xml"}
+    />
+    <!-- Per-page additions to <head>. Feed autodiscovery is NOT one of them:
+         the line above covers every page, so a page adding its own would ship
+         the same feed twice. Pages fill this with <Fragment slot="head">. -->
     <slot name="head" />
   </head>
   <body class="min-h-screen bg-[var(--color-page)] text-[var(--color-ink)] antialiased">

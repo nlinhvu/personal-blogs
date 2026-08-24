@@ -43,6 +43,53 @@ describe("static asset serving", () => {
   });
 });
 
+// A feed's whole job is to be fetchable by a machine that was told about it in
+// a <link rel="alternate">. These assert the contract that link makes: the URL
+// answers, it answers as XML, and the guid a subscriber keys off is the
+// absolute canonical post URL — the one value in a feed that must never change.
+describe("feeds and sitemap", () => {
+  it.each([
+    ["/rss.xml", "https://vulinh.dev/blog/hello-bilingual"],
+    ["/vi/rss.xml", "https://vulinh.dev/vi/blog/hello-bilingual"],
+  ])("serves %s with absolute permalink guids", async (path, guid) => {
+    const response = await SELF.fetch(`https://vulinh.dev${path}`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("xml");
+
+    const xml = await response.text();
+    expect(xml).toContain(`<guid isPermaLink="true">${guid}</guid>`);
+  });
+
+  it("links exactly one feed per page, in the page's own language", async () => {
+    for (const [path, feed] of [
+      ["/", "/rss.xml"],
+      ["/blog/hello-bilingual", "/rss.xml"],
+      ["/tags/spring-boot", "/rss.xml"],
+      ["/vi", "/vi/rss.xml"],
+      ["/vi/tags/spring-boot", "/vi/rss.xml"],
+    ]) {
+      const html = await (await SELF.fetch(`https://vulinh.dev${path}`)).text();
+      const links = html.match(/type="application\/rss\+xml"/g) ?? [];
+      expect(links, `${path} should link exactly one feed`).toHaveLength(1);
+      expect(html).toContain(`href="${feed}"`);
+    }
+  });
+
+  it("publishes a sitemap that lists real pages and nothing else", async () => {
+    const index = await SELF.fetch("https://vulinh.dev/sitemap-index.xml");
+    expect(index.status).toBe(200);
+
+    const xml = await (await SELF.fetch("https://vulinh.dev/sitemap-0.xml")).text();
+    expect(xml).toContain("<loc>https://vulinh.dev/blog/hello-bilingual</loc>");
+    // Reciprocal hreflang is the point of the i18n sitemap: it tells a crawler
+    // the two language versions are one document, not duplicate content.
+    expect(xml).toContain('hreflang="vi" href="https://vulinh.dev/vi/blog/hello-bilingual"');
+    // An error page or a feed in the sitemap invites a crawler to index it.
+    expect(xml).not.toContain("/404");
+    expect(xml).not.toContain("rss.xml");
+  });
+});
+
 describe("bilingual routing", () => {
   it("serves the English post", async () => {
     const response = await SELF.fetch("https://vulinh.dev/blog/hello-bilingual");
