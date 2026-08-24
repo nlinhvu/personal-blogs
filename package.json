@@ -1,11 +1,16 @@
 {
   "name": "personal-blogs",
   "private": true,
+  "type": "module",
   "workspaces": ["site"],
   "scripts": {
     "dev": "npm run dev --workspace=site",
     "build": "npm run build --workspace=site",
     "preview": "npm run preview --workspace=site",
-    "test": "npm run test --workspace=site"
+    "test": "vitest run && npm run test --workspace=site",
+    "test:scripts": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "4.1.11"
   }
 }
