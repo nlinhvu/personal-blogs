@@ -1,0 +1,8 @@
+# Shared across both languages. The directory name is the slug and the
+# pairing key — it is deliberately not a field in here.
+#
+# Dated after hello-bilingual so the newest-first ordering on the home page,
+# the tag pages and both feeds has something to actually order.
+pubDate: 2026-08-24T09:00:00+07:00
+tags: [spring-boot, jvm-internals]
+source: en

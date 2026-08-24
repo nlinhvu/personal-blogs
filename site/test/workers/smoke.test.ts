@@ -56,22 +56,55 @@ describe("feeds and sitemap", () => {
     return found.map((match) => new URL(match[1]));
   }
 
+  // Naming a specific post here would tie the test to whichever one happens to
+  // be newest. Assert the shape instead: every guid absolute, under this
+  // language's prefix, and repeated verbatim as the item link.
   it.each([
-    ["/rss.xml", "/blog/hello-bilingual"],
-    ["/vi/rss.xml", "/vi/blog/hello-bilingual"],
-  ])("serves %s with an absolute permalink guid", async (path, postPath) => {
+    ["/rss.xml", "/blog/"],
+    ["/vi/rss.xml", "/vi/blog/"],
+  ])("serves %s with absolute permalink guids under %s", async (path, prefix) => {
     const response = await SELF.fetch(`https://vulinh.dev${path}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("xml");
 
     const xml = await response.text();
-    const [guid] = guidsOf(xml);
-    expect(guid.pathname).toBe(postPath);
+    const guids = guidsOf(xml);
+    expect(guids.length).toBeGreaterThan(0);
 
-    // The item link must be that same URL, character for character. A trailing
-    // slash here is a 307 in front of every subscriber who clicks through.
-    expect(xml).toContain(`<link>${guid.href}</link>`);
+    for (const guid of guids) {
+      expect(guid.pathname.startsWith(prefix), `${guid.pathname} under ${prefix}`).toBe(true);
+      // The item link must be that same URL, character for character. A
+      // trailing slash here is a 307 in front of every subscriber who clicks.
+      expect(xml).toContain(`<link>${guid.href}</link>`);
+    }
   });
+
+  // Newest first is the whole reason a feed and an index are ordered at all: a
+  // reader shows the top item as the latest. Needs two posts to mean anything,
+  // which is why it could not be written until the second one existed.
+  function descending(values: number[], label: string) {
+    expect(values.length, `${label} needs at least two entries to order`).toBeGreaterThan(1);
+    for (let i = 1; i < values.length; i++) {
+      expect(values[i - 1], `${label} is out of order at position ${i}`).toBeGreaterThanOrEqual(
+        values[i],
+      );
+    }
+  }
+
+  it.each(["/rss.xml", "/vi/rss.xml"])("orders %s newest first", async (path) => {
+    const xml = await (await SELF.fetch(`https://vulinh.dev${path}`)).text();
+    const dates = [...xml.matchAll(/<pubDate>([^<]+)<\/pubDate>/g)].map((m) => Date.parse(m[1]));
+    descending(dates, path);
+  });
+
+  it.each(["/", "/vi", "/tags/spring-boot", "/vi/tags/spring-boot"])(
+    "orders the entries on %s newest first",
+    async (path) => {
+      const html = await (await SELF.fetch(`https://vulinh.dev${path}`)).text();
+      const dates = [...html.matchAll(/<time[^>]*datetime="([^"]+)"/g)].map((m) => Date.parse(m[1]));
+      descending(dates, path);
+    },
+  );
 
   it("points each feed's channel link at that language's home page", async () => {
     const link = async (path: string) => {
