@@ -25,9 +25,14 @@ const site = Astro.site!.toString();
     <link rel="canonical" href={canonicalUrl(path, site)} />
     <link rel="alternate" hreflang={otherLanguage(lang)} href={canonicalUrl(alternatePath, site)} />
     <link rel="alternate" hreflang="x-default" href={canonicalUrl(defaultPath, site)} />
+    <!-- Browsers ask for /favicon.ico whether or not it is declared, so the file
+         exists as well as the link. The SVG is what a current browser picks. -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body class="min-h-screen bg-[var(--color-page)] text-[var(--color-ink)] antialiased">
-    <div class="mx-auto max-w-2xl px-5 py-10">
+    <div class="mx-auto max-w-3xl px-5 py-10">
       <slot />
       <footer class="mt-16 border-t border-[var(--color-rule)] pt-6 text-sm text-[var(--color-muted)]">
         <p>

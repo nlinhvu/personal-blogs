@@ -28,6 +28,19 @@ describe("static asset serving", () => {
     const response = await SELF.fetch("https://vulinh.dev/does-not-exist");
     expect(response.status).toBe(404);
   });
+
+  // Browsers and crawlers ask for these three by convention whether or not the
+  // document links them, so a missing file is a 404 on every page view. The
+  // .ico is the one that gets requested without being declared anywhere.
+  it.each([
+    ["/favicon.ico", "image/vnd.microsoft.icon"],
+    ["/favicon.svg", "image/svg+xml"],
+    ["/apple-touch-icon.png", "image/png"],
+  ])("serves %s", async (path, contentType) => {
+    const response = await SELF.fetch(`https://vulinh.dev${path}`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain(contentType);
+  });
 });
 
 describe("bilingual routing", () => {
