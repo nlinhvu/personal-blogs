@@ -6,3 +6,6 @@ spring-boot:
 jvm-internals:
   en: "JVM Internals"
   vi: "Bên trong JVM"
+dns:
+  en: "DNS"
+  vi: "DNS"
