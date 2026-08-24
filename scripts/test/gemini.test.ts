@@ -161,6 +161,37 @@ describe("buildSystemInstruction", () => {
     expect(prompt).not.toMatch(/headings, /i);
   });
 
+  // The house rule: a term of the trade stays in English, full stop. record,
+  // signature, key and fingerprint are terms a software engineer reads as
+  // terms — translating them costs the reader the word they would search for.
+  // Vietnamese is the exception, and the glossary is where exceptions live.
+  it.each(["body", "field"] as const)("tells the %s that English is the default", (kind) => {
+    const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", kind);
+    expect(prompt).toMatch(/keep .*in English/i);
+    // The glossary is the only thing that may send a term the other way.
+    expect(prompt).toMatch(/only .*glossary|glossary .*only/i);
+    // And an uncertain call lands on English rather than on a guess.
+    expect(prompt).toMatch(/in doubt|unsure|not sure/i);
+  });
+
+  it.each(["body", "field"] as const)("names the terms the %s must not translate", (kind) => {
+    const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", kind);
+    // A rule with no examples is a rule a model can agree with and still break.
+    // These four are the ones it got wrong, or would have.
+    for (const keep of ["record", "signature", "key", "fingerprint", "registrar", "registry"]) {
+      expect(prompt, `${keep} must be named as a term to keep`).toContain(keep);
+    }
+  });
+
+  it.each(["body", "field"] as const)("does not tell the %s to translate any term", (kind) => {
+    const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", kind);
+    // The earlier prompt carried a "translate these" list. It is gone: nothing
+    // outside the glossary may turn a term into Vietnamese.
+    for (const gone of ["bản ghi", "chữ ký", "dấu vân tay"]) {
+      expect(prompt, `${gone} must not be offered as a translation`).not.toContain(gone);
+    }
+  });
+
   it("keeps the markdown rules for a body", () => {
     const prompt = buildSystemInstruction(glossary("[]\n"), "English", "Vietnamese", "body");
     expect(prompt).toMatch(/headings/i);

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 470" width="700" height="470" role="img">
+  <style>
+    /* The site has no theme toggle — dark mode follows the operating system —
+       so a media query inside the SVG lands on exactly the same answer the
+       page does, even though CSS from the page cannot reach in here. */
+    :root {
+      --strong: #3f3f46; --text: #71717a; --faint: #a1a1aa;
+      --stroke: #71717a; --line: #a1a1aa;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --strong: #e4e4e7; --text: #a1a1aa; --faint: #71717a;
+        --stroke: #52525b; --line: #52525b;
+      }
+    }
+    .box   { fill: none; stroke: var(--stroke); stroke-width: 2; }
+    .gap   { fill: none; stroke: #f43f5e; stroke-width: 2; stroke-dasharray: 7 5; }
+    .zone  { font: 600 19px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--strong); }
+    .note  { font: 13px ui-sans-serif, system-ui, sans-serif; fill: var(--text); }
+    .miss  { font: 600 13px ui-sans-serif, system-ui, sans-serif; fill: #f43f5e; }
+    .arrow { stroke: var(--line); stroke-width: 2; fill: none; }
+    .head-fill { fill: var(--line); }
+    .amiss { stroke: #f43f5e; stroke-width: 2; fill: none; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" class="head-fill"/>
+    </marker>
+    <marker id="am" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#f43f5e"/>
+    </marker>
+  </defs>
+
+  <rect class="box" x="230" y="14" width="240" height="58" rx="10"/>
+  <text class="zone" x="350" y="41" text-anchor="middle">root (.)</text>
+  <text class="note" x="350" y="60" text-anchor="middle">key built into every resolver</text>
+
+  <line class="arrow" x1="350" y1="72" x2="350" y2="128" marker-end="url(#a)"/>
+  <text class="note" x="362" y="105">vouches with a DS record</text>
+
+  <rect class="box" x="230" y="130" width="240" height="46" rx="10"/>
+  <text class="zone" x="350" y="159" text-anchor="middle">.dev</text>
+
+  <line class="amiss" x1="350" y1="176" x2="350" y2="250" marker-end="url(#am)"/>
+  <text class="miss" x="362" y="205">DS record missing</text>
+  <text class="note" x="362" y="224">this is the line you type</text>
+  <text class="note" x="362" y="240">at the registrar</text>
+
+  <rect class="gap" x="230" y="252" width="240" height="46" rx="10"/>
+  <text class="zone" x="350" y="281" text-anchor="middle">vulinh.dev</text>
+
+  <line class="arrow" x1="350" y1="298" x2="350" y2="360" marker-end="url(#a)"/>
+  <text class="note" x="362" y="333">signs its own records</text>
+
+  <rect class="box" x="180" y="362" width="340" height="58" rx="10"/>
+  <text class="zone" x="350" y="389" text-anchor="middle">A  ·  CAA  ·  MX</text>
+  <text class="note" x="350" y="408" text-anchor="middle">the answers a browser acts on</text>
+
+  <text class="note" x="350" y="450" text-anchor="middle">Every level vouches for the one below it. Break one link and the chain stops.</text>
+</svg>

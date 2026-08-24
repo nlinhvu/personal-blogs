@@ -4,29 +4,31 @@
 # whole maintenance model: this file grows from real mistakes, not from
 # guessing which words might one day be a problem.
 #
-# House rule: English technical terms stay in English. A Vietnamese engineer
-# searches for "virtual thread", not for a translation of it, and a post that
-# invents Vietnamese names for standard terms is harder to read, not easier.
+# House rule: every term of the trade stays in English. A software engineer
+# reading Vietnamese already knows these words in English, will meet them again
+# in English documentation, and will search for them in English. record,
+# signature, key, fingerprint, registrar, registry, resolver, zone — all of them
+# stay as they are.
+#
+# So this file is an EXCEPTION list, not an allow list. A term not listed here
+# stays in English by default; a line below is only needed when a term should go
+# the other way, into Vietnamese.
+
+# A line is worth writing when a term has a KNOWN bad translation waiting for
+# it, or when two terms are easy to collapse. Otherwise the default covers it.
 - en: "virtual thread"
   vi: "virtual thread"
-  note: "Keep in English. Never translate to 'luồng ảo'."
-- en: "garbage collection"
-  vi: "garbage collection"
-  note: "Keep in English."
-- en: "throughput"
-  vi: "throughput"
-  note: "Keep in English."
-- en: "latency"
-  vi: "latency"
-  note: "Keep in English."
-- en: "deadlock"
-  vi: "deadlock"
-  note: "Keep in English."
-- en: "backpressure"
-  vi: "backpressure"
-  note: "Keep in English."
-- en: "trade-off"
-  vi: "đánh đổi"
+  note: "Never translate to 'luồng ảo'."
 - en: "under the hood"
-  vi: "bên dưới"
+  vi: "ngầm bên dưới"
   note: "Plain wording. Not 'dưới nắp capo'."
+# Kept as lines even though English is now the default, because these two are
+# the pair a translator is most likely to collapse into one another.
+# Found 2026-08-24: "parent registry" came back as "nhà đăng ký tên miền cấp
+# cha", which says registrar. They are different companies.
+- en: "registrar"
+  vi: "registrar"
+  note: "The company a domain is bought from. NOT the registry."
+- en: "registry"
+  vi: "registry"
+  note: "The operator of the TLD itself. NOT the registrar."

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="900" height="420" role="img">
+  <style>
+    /* The site has no theme toggle — dark mode follows the operating system —
+       so a media query inside the SVG lands on exactly the same answer the
+       page does, even though CSS from the page cannot reach in here. */
+    :root {
+      --strong: #3f3f46; --text: #71717a; --faint: #a1a1aa;
+      --stroke: #71717a; --line: #a1a1aa;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --strong: #e4e4e7; --text: #a1a1aa; --faint: #71717a;
+        --stroke: #52525b; --line: #52525b;
+      }
+    }
+    .box   { fill: none; stroke: var(--stroke); stroke-width: 2; }
+    .ok    { fill: none; stroke: #10b981; stroke-width: 2; }
+    .head  { font: 600 16px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--strong); }
+    .mono  { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--text); }
+    .lab   { font: 13px ui-sans-serif, system-ui, sans-serif; fill: var(--text); }
+    .good  { font: 600 15px ui-sans-serif, system-ui, sans-serif; fill: #10b981; }
+    .foot  { font: 13px ui-sans-serif, system-ui, sans-serif; fill: var(--faint); }
+    .arrow { stroke: var(--line); stroke-width: 2; fill: none; }
+    .head-fill { fill: var(--line); }
+  </style>
+  <defs>
+    <marker id="b" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" class="head-fill"/>
+    </marker>
+  </defs>
+
+  <rect class="box" x="16" y="16" width="400" height="98" rx="10"/>
+  <text class="head" x="36" y="43">.dev registry</text>
+  <text class="lab"  x="36" y="66">keeps a fingerprint, never the key</text>
+  <text class="mono" x="36" y="94">DS 2371 13 2 D5C70F86…C3E2</text>
+
+  <rect class="box" x="484" y="16" width="400" height="98" rx="10"/>
+  <text class="head" x="504" y="43">vulinh.dev zone</text>
+  <text class="lab"  x="504" y="66">publishes the key in the open</text>
+  <text class="mono" x="504" y="94">DNSKEY 257 3 13 mdss…KGQ==</text>
+
+  <line class="arrow" x1="216" y1="114" x2="340" y2="188" marker-end="url(#b)"/>
+  <line class="arrow" x1="684" y1="114" x2="560" y2="188" marker-end="url(#b)"/>
+
+  <rect class="box" x="190" y="190" width="520" height="104" rx="10"/>
+  <text class="head" x="450" y="218" text-anchor="middle">the resolver, on every lookup</text>
+  <text class="mono" x="450" y="246" text-anchor="middle">SHA-256( owner name + DNSKEY rdata )</text>
+  <text class="lab"  x="450" y="276" text-anchor="middle">hashes the published key, then compares it to the fingerprint</text>
+
+  <line class="arrow" x1="450" y1="294" x2="450" y2="330" marker-end="url(#b)"/>
+
+  <rect class="ok" x="270" y="332" width="360" height="52" rx="10"/>
+  <text class="good" x="450" y="356" text-anchor="middle">match — the answer is trusted</text>
+  <text class="lab"  x="450" y="375" text-anchor="middle">no match, and the resolver throws it away</text>
+
+  <text class="foot" x="450" y="410" text-anchor="middle">A passport office keeps a picture of the print, not the finger.</text>
+</svg>

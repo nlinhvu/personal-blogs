@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300" width="860" height="300" role="img">
+  <style>
+    /* The site has no theme toggle — dark mode follows the operating system —
+       so a media query inside the SVG lands on exactly the same answer the
+       page does, even though CSS from the page cannot reach in here. */
+    :root {
+      --strong: #3f3f46; --text: #71717a; --faint: #a1a1aa;
+      --stroke: #71717a; --line: #a1a1aa;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --strong: #e4e4e7; --text: #a1a1aa; --faint: #71717a;
+        --stroke: #52525b; --line: #52525b;
+      }
+    }
+    .plate { fill: none; stroke: var(--stroke); stroke-width: 2; }
+    .mono  { font: 600 19px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .dim   { fill: var(--faint); font-weight: 400; }
+    .lab   { font: 600 13px ui-sans-serif, system-ui, sans-serif; fill: var(--strong); }
+    .desc  { font: 13px ui-sans-serif, system-ui, sans-serif; fill: var(--text); }
+    .foot  { font: 13px ui-sans-serif, system-ui, sans-serif; fill: var(--faint); }
+    .k1 { fill: #6366f1; } .k2 { fill: #0ea5e9; } .k3 { fill: #f59e0b; } .k4 { fill: #10b981; }
+  </style>
+
+  <rect class="plate" x="16" y="18" width="828" height="54" rx="10"/>
+  <text class="mono" x="34" y="52">
+    <tspan class="dim">vulinh.dev. 3600 IN DS  </tspan><tspan class="k1">2371</tspan><tspan class="dim">  </tspan><tspan class="k2">13</tspan><tspan class="dim">  </tspan><tspan class="k3">2</tspan><tspan class="dim">  </tspan><tspan class="k4">D5C70F86…C3E2</tspan>
+  </text>
+
+  <rect class="k1" x="34" y="106" width="12" height="12" rx="3"/>
+  <text class="lab" x="58" y="117">key tag</text>
+  <text class="desc" x="126" y="117">a 16-bit checksum of the key — a hint for picking a key, not an identity</text>
+
+  <rect class="k2" x="34" y="146" width="12" height="12" rx="3"/>
+  <text class="lab" x="58" y="157">algorithm</text>
+  <text class="desc" x="140" y="157">13 = ECDSA P-256 with SHA-256, a code from an IANA registry</text>
+
+  <rect class="k3" x="34" y="186" width="12" height="12" rx="3"/>
+  <text class="lab" x="58" y="197">digest type</text>
+  <text class="desc" x="152" y="197">2 = SHA-256, also an IANA registry code</text>
+
+  <rect class="k4" x="34" y="226" width="12" height="12" rx="3"/>
+  <text class="lab" x="58" y="237">digest</text>
+  <text class="desc" x="118" y="237">the fingerprint of the key — the point of the whole record</text>
+
+  <text class="foot" x="34" y="278">Only the key is random. Everything after DS is computed from it, so you can check it before you type it.</text>
+</svg>
