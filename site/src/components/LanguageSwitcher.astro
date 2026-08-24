@@ -11,4 +11,9 @@ const { lang, href } = Astro.props;
 const target = otherLanguage(lang);
 const label = target === "vi" ? "Tiếng Việt" : "English";
 ---
-<a href={href} hreflang={target} rel="alternate">{label}</a>
+<a
+  class="text-sm text-[var(--color-muted)] underline-offset-4 hover:underline"
+  href={href}
+  hreflang={target}
+  rel="alternate"
+>{label}</a>

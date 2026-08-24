@@ -9,6 +9,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   alternatePath="/404"
   defaultPath="/"
 >
-  <h1>Not found</h1>
-  <p>That page does not exist. <a href="/">Go to the home page</a>.</p>
+  <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Not found</h1>
+  <p class="mt-4 text-lg text-[var(--color-muted)]">
+    That page does not exist.
+    <a class="underline underline-offset-4" href="/">Go to the home page</a>.
+  </p>
 </BaseLayout>

@@ -2,7 +2,7 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import LanguageSwitcher from "../../components/LanguageSwitcher.astro";
-import { postPath } from "../../lib/urls";
+import PostList from "../../components/PostList.astro";
 
 const entries = (await getCollection("blog", ({ data }) => data.lang === "vi")).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
@@ -16,13 +16,12 @@ const entries = (await getCollection("blog", ({ data }) => data.lang === "vi")).
   alternatePath="/"
   defaultPath="/"
 >
-  <nav><LanguageSwitcher lang="vi" href="/" /></nav>
-  <h1>vulinh.dev</h1>
-  <ul>
-    {entries.map((entry) => (
-      <li>
-        <a href={postPath(entry.data.slug, "vi")}>{entry.data.title}</a>
-      </li>
-    ))}
-  </ul>
+  <header class="mb-14">
+    <nav class="mb-8"><LanguageSwitcher lang="vi" href="/" /></nav>
+    <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">vulinh.dev</h1>
+    <p class="mt-4 text-lg text-[var(--color-muted)]">
+      Bài viết kỹ thuật song ngữ về Java, Spring và JVM.
+    </p>
+  </header>
+  <PostList entries={entries} lang="vi" />
 </BaseLayout>

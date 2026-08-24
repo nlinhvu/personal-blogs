@@ -2,7 +2,8 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import LanguageSwitcher from "../../components/LanguageSwitcher.astro";
-import { postPath, tagPath } from "../../lib/urls";
+import { tagPath } from "../../lib/urls";
+import PostList from "../../components/PostList.astro";
 import { usedTags } from "../../lib/tags";
 import { readTagRegistry } from "../../loaders/bilingual-post";
 
@@ -30,11 +31,10 @@ const label = readTagRegistry("../content")[tag].en;
   alternatePath={tagPath(tag, "vi")}
   defaultPath={tagPath(tag, "en")}
 >
-  <nav><LanguageSwitcher lang="en" href={tagPath(tag, "vi")} /></nav>
-  <h1>{label}</h1>
-  <ul>
-    {entries.map((entry) => (
-      <li><a href={postPath(entry.data.slug, "en")}>{entry.data.title}</a></li>
-    ))}
-  </ul>
+  <header class="mb-14">
+    <nav class="mb-8"><LanguageSwitcher lang="en" href={tagPath(tag, "vi")} /></nav>
+    <p class="text-sm uppercase tracking-widest text-[var(--color-muted)]">Tagged</p>
+    <h1 class="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">{label}</h1>
+  </header>
+  <PostList entries={entries} lang="en" />
 </BaseLayout>
