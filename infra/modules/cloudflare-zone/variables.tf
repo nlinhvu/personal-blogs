@@ -48,3 +48,30 @@ variable "bot_fight_mode" {
   type        = bool
   default     = false
 }
+
+variable "web_analytics" {
+  description = <<-EOT
+    Cloudflare Web Analytics, injected at the edge into HTML responses.
+
+    On, and unlike Bot Fight Mode that is a cheap yes: the beacon sets no
+    cookie, stores nothing on the device and identifies no one, so it needs no
+    consent banner. It costs nothing and does not count against the Workers
+    request quota.
+
+    It does need two CSP directives to work, both in site/astro.config.mjs:
+    `script-src` must allow static.cloudflareinsights.com and `connect-src`
+    must allow cloudflareinsights.com. Allowing only the first buys a script
+    that loads and then fails to report, which is worse than off.
+
+    The numbers undercount, and by a lot for this audience: the beacon is on
+    the common blocklists and this blog is read by people who run them. Treat
+    the shape of the trend as the signal, never the absolute count.
+
+    Flipping this to false does NOT work through the pipeline: Account
+    Analytics is a read-only permission group, so the apply fails with 403.
+    Turn it off in the dashboard and set this to false afterwards, so plan
+    stays clean and keeps reporting drift.
+  EOT
+  type        = bool
+  default     = true
+}

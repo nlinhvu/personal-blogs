@@ -29,3 +29,8 @@ output "dnssec_details" {
     public_key       = cloudflare_zone_dnssec.this.public_key
   }
 }
+
+output "web_analytics_site_tag" {
+  description = "Web Analytics site identifier, the second half of its import ID"
+  value       = cloudflare_web_analytics_site.this.site_tag
+}

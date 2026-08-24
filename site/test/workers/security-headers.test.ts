@@ -78,9 +78,10 @@ describe("markup stays inside the policy", () => {
   it("allows the analytics beacon to load and to report", async () => {
     const html = await (await SELF.fetch("https://vulinh.dev/")).text();
     const csp = html.match(/content-security-policy" content="([^"]+)"/)?.[1] ?? "";
-    // The script host alone is not enough. Without connect-src the beacon
-    // loads and its POST is refused, which reports nothing while still
-    // costing a third-party request.
+    // script-src is the load-bearing one: without the vendor host the script
+    // is refused outright. connect-src is asserted because the reporting
+    // destination should be readable off the policy, not inherited silently
+    // from default-src.
     expect(csp).toContain("script-src 'self' https://static.cloudflareinsights.com");
     expect(csp).toContain("connect-src 'self' https://cloudflareinsights.com");
   });

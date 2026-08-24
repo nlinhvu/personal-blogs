@@ -31,10 +31,13 @@ export default defineConfig({
         "img-src 'self' data:",
         "object-src 'none'",
         "base-uri 'self'",
-        // The analytics beacon POSTs its sample here. connect-src has no
-        // explicit value otherwise, so it falls back to default-src 'self'
-        // and the POST is refused — the script loads and still reports
-        // nothing. Allowing the script without this buys a broken beacon.
+        // Where the beacon reports. Measured on production 2026-08-24: it
+        // POSTs same-origin to /cdn-cgi/rum and gets 204, because Cloudflare
+        // proxies that endpoint through the zone itself. So 'self' is the part
+        // that carries it, and default-src would have covered it anyway.
+        // Stated explicitly regardless: this is a destination worth being able
+        // to read off the policy rather than inferring from a fallback. The
+        // vendor host stays as a hedge for a beacon build that posts direct.
         "connect-src 'self' https://cloudflareinsights.com",
       ],
       // Cloudflare Web Analytics injects its beacon into HTML responses at the
