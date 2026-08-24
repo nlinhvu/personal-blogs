@@ -5,9 +5,9 @@ Remote state: Cloudflare R2 through the S3-compatible backend.
 
 ## Ownership boundary
 
-OpenTofu owns: zone, zone settings, DNSSEC, CAA, R2 bucket, `workers_custom_domain`,
-Web Analytics site.
+OpenTofu owns: zone, zone settings, DNSSEC, CAA, R2 bucket, `workers_custom_domain`.
 Wrangler owns: the Worker script content.
+Nobody owns Web Analytics; see Known manual exceptions.
 
 OpenTofu must never manage `cloudflare_workers_script`. Wrangler redeploys it
 constantly, so OpenTofu would report drift on every plan.
@@ -37,37 +37,6 @@ never touches state; the R2 key never touches Cloudflare resources.
 | Zone | Zone Settings / Edit | ssl, always_use_https, automatic_https_rewrites, min_tls_version, tls_1_3 |
 | Zone | DNS / Edit | the apex record the custom domain creates |
 | Account | Workers Scripts / Edit | bind a Worker to a hostname |
-| Account | Account Analytics / Read | read the Web Analytics site |
-
-`cloudflare_web_analytics_site` is **account**-scoped: it lives under
-`/accounts/{id}/rum/*`, not under the zone, so no amount of zone permission
-reaches it. Cloudflare offers **Account Analytics at Read only** — there is no
-Edit level to grant.
-
-Read is enough for what this repository asks of it, and the reason is worth
-understanding rather than accepting: the declared config matches the site that
-already exists, so `import` is a read and the apply that follows computes zero
-changes and writes nothing.
-
-The consequence is a resource that **detects drift but cannot correct it**. A
-dashboard click that turns Web Analytics off shows up as a diff on the next
-plan; applying that diff back would need a write this token does not have.
-Reconcile such a diff in the dashboard, not in the pipeline. That is a smaller
-loss than it sounds: knowing a setting changed is most of the value, and it is
-the half that silently rots without a plan to catch it.
-
-Probe read access before relying on it:
-
-```bash
-curl -sS -o /dev/null -w "rum %{http_code}\n" \
-  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-  "https://api.cloudflare.com/client/v4/accounts/$TF_VAR_cloudflare_account_id/rum/site_info/list"
-```
-
-`200` means the import will work. If a future plan ever proposes a *change*
-rather than an import, stop: that write will fail with `403`, and the fix is to
-make the config match reality, not to run the apply.
-
 Zone Resources must be **All zones from an account**, not a single zone: a
 zone-scoped token cannot create a zone, because the zone does not exist yet to
 scope to. Narrow it to the specific zone later if the token is ever reissued.
@@ -137,25 +106,62 @@ rm -f terraform.tfstate terraform.tfstate.backup
 tofu plan                      # expect: No changes. -- proves state reads from R2
 ```
 
-## Adopting resources created outside OpenTofu
+## Known manual exceptions
 
-Web Analytics was switched on in the dashboard on 2026-08-23, before it was
-declared here. Declaring it without adopting it would have created a **second**
-site for the same zone and changed the beacon token on live pages.
+Things that are configured in the Cloudflare dashboard and deliberately not in
+this state. Each one needs a replacement check, because a setting nobody
+declares is a setting nobody notices changing.
 
-`envs/prod/main.tf` carries an `import` block for it. Run:
+### Cloudflare Web Analytics
 
-```bash
-cd infra/envs/prod
-tofu plan     # expect: 1 to import, 0 to add, 0 to change, 0 to destroy
-tofu apply
-tofu plan     # expect: No changes.
+**Enabled in the dashboard on 2026-08-23. Not managed here, and not for lack of
+trying.**
+
+`cloudflare_web_analytics_site` exists in provider 5.23.0 and the site was
+declared with an `import` block matching the live values exactly, so the apply
+would have written nothing. It still failed, on the import's own read:
+
+```text
+GET https://api.cloudflare.com/client/v4/accounts/<account>/rum/site_info/<site>
+403 Forbidden
+{"code":10000,"message":"Authentication error"}
+Planning failed.
 ```
 
-Then delete the `import` block: it is one-time scaffolding, and a plan that is
-already clean does not need it.
+Granting **Account Analytics** to the token did not change it. That permission
+group covers analytics *data*; the `/rum/site_info/*` endpoints are Web
+Analytics *administration* and are not reachable from an account API token of
+the kind this pipeline uses. Cloudflare documents neither the requirement nor
+the gap.
 
-The general shape, for the next time something is clicked before it is
-declared: never let apply create a duplicate. Read the real identifier from the
-API first, write the `import` block, and confirm plan says *import* rather than
-*add*.
+Two rounds of permission work bought nothing, so the resource was removed. What
+it was ever going to provide was drift detection on one boolean, and a smoke
+test provides that for free — the beacon either reaches a reader or it does not,
+which is the thing actually worth knowing:
+
+```bash
+curl -sS https://vulinh.dev/ -H 'Accept: text/html' \
+  | grep -qE '<script[^>]*static\.cloudflareinsights\.com'
+```
+
+That runs in the `Smoke test production` step of `.github/workflows/site-deploy.yml`.
+Two details are load-bearing, and both were measured against production rather
+than assumed:
+
+| Detail | Why |
+|---|---|
+| `Accept: text/html` | Cloudflare injects the beacon at the edge only when the request accepts HTML. A bare `curl` gets no script; so does one carrying a browser `User-Agent` but no `Accept`. Either would fail the check for the wrong reason |
+| Match the `<script>` tag, not the bare host | The host also appears in this site's CSP `<meta>` tag, which is emitted on every page whether or not the beacon is injected. Grepping for `cloudflareinsights` alone passes forever — a check that cannot fail is worse than no check |
+
+The first draft of this check got the second detail wrong and would have been
+green for the rest of the project's life.
+
+Revisit if Cloudflare ships a permission group that reaches these endpoints.
+
+### The general shape
+
+Never let an apply create a duplicate of something that already exists. Read the
+real identifier from the API first, write an `import` block, and confirm the plan
+says *import* rather than *add*. If the import itself cannot read the resource,
+the resource does not belong in this state — write down why, and replace it with
+a check that observes the effect instead of the setting.

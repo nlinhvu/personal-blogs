@@ -83,4 +83,21 @@ jobs:
           curl -sSI https://vulinh.dev/ | grep -qi 'x-content-type-options: nosniff'
           curl -sSI https://vulinh.dev/ | grep -qi 'x-robots-tag' \
             && { echo "FAIL: production is de-indexed"; exit 1; } || true
+          # Web Analytics is switched on in the dashboard, not in OpenTofu: the
+          # infra token cannot read /rum/site_info even with Account Analytics
+          # granted, so declaring it made every apply fail. This is the
+          # replacement tripwire. Two details are load-bearing and both were
+          # measured, not assumed:
+          #
+          #   Accept: text/html   Cloudflare injects the beacon at the edge only
+          #                       when the request accepts HTML. A bare curl, or
+          #                       one carrying only a browser User-Agent, gets no
+          #                       script and would fail this for the wrong reason.
+          #   <script ...>        matching the bare host would also match the CSP
+          #                       meta tag, which this site emits on every page
+          #                       whether or not the beacon is injected. That
+          #                       check can never fail, which is worse than none.
+          curl -sS https://vulinh.dev/ -H 'Accept: text/html' \
+            | grep -qE '<script[^>]*static\.cloudflareinsights\.com' \
+            || { echo "FAIL: web analytics beacon is gone from production"; exit 1; }
           echo "production smoke passed"

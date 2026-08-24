@@ -107,36 +107,3 @@ resource "cloudflare_bot_management" "this" {
   zone_id    = cloudflare_zone.this.id
   fight_mode = var.bot_fight_mode
 }
-
-# Cloudflare Web Analytics. `auto_install` is the part that matters: it makes
-# the edge inject the beacon script into HTML responses, and it does that only
-# for browser-shaped requests. curl never sees the script, so neither CI nor the
-# test suite can catch a problem with it — the only place it shows up is a real
-# reader's console. That asymmetry is exactly why it belongs in state: a
-# dashboard click here is invisible to every other check the project has.
-#
-# The site already existed when this was written, created 2026-08-23, and was
-# imported rather than created. See infra/README.md.
-#
-# The values below are the ones the live site already carries, and they are
-# meant to stay that way. Cloudflare exposes Account Analytics at Read only, so
-# this token can import the site and detect drift on it but cannot write it: a
-# plan that proposes a CHANGE here will fail at apply with 403. That makes this
-# resource a tripwire rather than a control. Reconcile a diff in the dashboard
-# and bring the config back in line, do not try to apply through it.
-#
-# Allowing the beacon costs two CSP directives in site/astro.config.mjs:
-# `script-src` for static.cloudflareinsights.com and `connect-src` for
-# cloudflareinsights.com, which is where the beacon POSTs its sample. Turning
-# this off does not require removing those, but leaving them without this is
-# dead configuration.
-resource "cloudflare_web_analytics_site" "this" {
-  account_id   = var.account_id
-  zone_tag     = cloudflare_zone.this.id
-  auto_install = var.web_analytics
-  enabled      = var.web_analytics
-
-  # Cloudflare's own term for the free tier of Web Analytics. Reflects what the
-  # existing site was created with; declaring it keeps plan quiet.
-  lite = true
-}
