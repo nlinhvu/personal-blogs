@@ -55,7 +55,10 @@ jobs:
           URL="${{ vars.STAGING_URL }}"
           .github/scripts/wait-for-http-200.sh "$URL/"
           test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/vi")" = "200"
-          curl -sSI "$URL/" | grep -qi 'x-robots-tag: noindex, nofollow'
+          # Fetch then match, for the reason spelled out in the production job.
+          headers=$(curl -sSI "$URL/")
+          grep -qi 'x-robots-tag: noindex, nofollow' <<<"$headers" \
+            || { echo "FAIL: staging is indexable"; exit 1; }
           echo "staging smoke passed"
 
   production:
@@ -79,29 +82,40 @@ jobs:
         run: |
           set -euo pipefail
           .github/scripts/wait-for-http-200.sh https://vulinh.dev/
-          # A real published post, not a fixture: this asserts the deployed site,
-          # so the slug has to be one production actually serves. If this post is
-          # ever unpublished, this line has to move with it.
-          curl -sS https://vulinh.dev/blog/reading-a-ds-record \
-            | grep -q 'rel="canonical" href="https://vulinh.dev/blog/reading-a-ds-record"'
-          curl -sSI https://vulinh.dev/ | grep -qi 'x-content-type-options: nosniff'
-          curl -sSI https://vulinh.dev/ | grep -qi 'x-robots-tag' \
-            && { echo "FAIL: production is de-indexed"; exit 1; } || true
+
+          # Fetch first, match second. `curl ... | grep -q` reads tidier and is
+          # a trap: grep exits at the first match, curl keeps writing into a
+          # closed pipe, and the resulting `curl: (23)` is promoted to a failed
+          # job by pipefail. It stayed hidden for as long as the post under test
+          # was a 68-word stub that fitted the pipe buffer whole, and fired the
+          # first time a real 1,600-word article took its place — with the
+          # canonical link, the thing being matched, sitting in <head>.
+          #
+          # -H 'Accept: text/html' is load-bearing on the home page: Cloudflare
+          # injects the Web Analytics beacon at the edge only for requests that
+          # accept HTML, so a bare curl gets no script and would fail the beacon
+          # check below for the wrong reason.
+          #
+          # The slug is a real published post, not a fixture — this asserts the
+          # deployed site. If that post is ever unpublished, this moves with it.
+          post=$(curl -sS https://vulinh.dev/blog/reading-a-ds-record)
+          home=$(curl -sS https://vulinh.dev/ -H 'Accept: text/html')
+          headers=$(curl -sSI https://vulinh.dev/)
+
+          grep -q 'rel="canonical" href="https://vulinh.dev/blog/reading-a-ds-record"' <<<"$post" \
+            || { echo "FAIL: canonical link wrong, or the post is no longer served"; exit 1; }
+          grep -qi 'x-content-type-options: nosniff' <<<"$headers" \
+            || { echo "FAIL: nosniff header is missing from production"; exit 1; }
+          if grep -qi 'x-robots-tag' <<<"$headers"; then
+            echo "FAIL: production is de-indexed"; exit 1
+          fi
           # Web Analytics is switched on in the dashboard, not in OpenTofu: the
           # infra token cannot read /rum/site_info even with Account Analytics
           # granted, so declaring it made every apply fail. This is the
-          # replacement tripwire. Two details are load-bearing and both were
-          # measured, not assumed:
-          #
-          #   Accept: text/html   Cloudflare injects the beacon at the edge only
-          #                       when the request accepts HTML. A bare curl, or
-          #                       one carrying only a browser User-Agent, gets no
-          #                       script and would fail this for the wrong reason.
-          #   <script ...>        matching the bare host would also match the CSP
-          #                       meta tag, which this site emits on every page
-          #                       whether or not the beacon is injected. That
-          #                       check can never fail, which is worse than none.
-          curl -sS https://vulinh.dev/ -H 'Accept: text/html' \
-            | grep -qE '<script[^>]*static\.cloudflareinsights\.com' \
+          # replacement tripwire. Matching `<script ...>` rather than the bare
+          # host is load-bearing and was measured, not assumed: the host also
+          # appears in the CSP meta tag this site emits on every page, so a
+          # bare-host match could never fail — worse than having no check.
+          grep -qE '<script[^>]*static\.cloudflareinsights\.com' <<<"$home" \
             || { echo "FAIL: web analytics beacon is gone from production"; exit 1; }
           echo "production smoke passed"

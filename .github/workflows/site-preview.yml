@@ -44,5 +44,8 @@ jobs:
         run: |
           set -euo pipefail
           .github/scripts/wait-for-http-200.sh "$PREVIEW_URL/"
-          curl -sSI "$PREVIEW_URL/" | grep -qi 'x-robots-tag: noindex, nofollow'
+          # Fetch then match, for the reason spelled out in site-deploy.yml.
+          headers=$(curl -sSI "$PREVIEW_URL/")
+          grep -qi 'x-robots-tag: noindex, nofollow' <<<"$headers" \
+            || { echo "FAIL: preview is indexable"; exit 1; }
           echo "preview smoke passed"
