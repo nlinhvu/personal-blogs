@@ -64,9 +64,25 @@ describe("markup stays inside the policy", () => {
     expect(html.match(/\sstyle="/g)).toBeNull();
   });
 
-  it.each(pages)("carries no script tag: %s", async (url) => {
+  // The requirement is that the page READS with JavaScript disabled, not that
+  // scripts are banned: analytics and anything else Phase 3 wants goes in via
+  // script-src. What must stay true is that no script is load-bearing, and the
+  // cheapest proof of that is that the site's own markup ships none. Cloudflare
+  // injects its analytics beacon at the edge for browser-shaped requests, so it
+  // is absent here and this assertion is about our output, not the served page.
+  it.each(pages)("ships no javascript of its own: %s", async (url) => {
     const html = await (await SELF.fetch(url)).text();
     expect(html).not.toContain("<script");
+  });
+
+  it("allows the analytics beacon to load and to report", async () => {
+    const html = await (await SELF.fetch("https://vulinh.dev/")).text();
+    const csp = html.match(/content-security-policy" content="([^"]+)"/)?.[1] ?? "";
+    // The script host alone is not enough. Without connect-src the beacon
+    // loads and its POST is refused, which reports nothing while still
+    // costing a third-party request.
+    expect(csp).toContain("script-src 'self' https://static.cloudflareinsights.com");
+    expect(csp).toContain("connect-src 'self' https://cloudflareinsights.com");
   });
 
   it("colours code through Prism classes, not inline styles", async () => {
