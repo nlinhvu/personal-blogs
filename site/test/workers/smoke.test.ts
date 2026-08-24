@@ -43,21 +43,43 @@ describe("static asset serving", () => {
   });
 });
 
-// A feed's whole job is to be fetchable by a machine that was told about it in
-// a <link rel="alternate">. These assert the contract that link makes: the URL
-// answers, it answers as XML, and the guid a subscriber keys off is the
-// absolute canonical post URL — the one value in a feed that must never change.
+// Same rule as the page tests above: SITE_URL differs per environment, so
+// these assert the CONTRACT — absolute URLs, correct paths, one origin for the
+// whole document — and never the literal host. Hardcoding vulinh.dev here made
+// the staging job red on the first push, which is the failure mode the comment
+// at the top of this file was already warning about.
 describe("feeds and sitemap", () => {
+  function guidsOf(xml: string): URL[] {
+    const found = [...xml.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/g)];
+    if (found.length === 0) throw new Error("no permalink guid in the feed");
+    // new URL() on a relative string throws, so this also proves absoluteness.
+    return found.map((match) => new URL(match[1]));
+  }
+
   it.each([
-    ["/rss.xml", "https://vulinh.dev/blog/hello-bilingual"],
-    ["/vi/rss.xml", "https://vulinh.dev/vi/blog/hello-bilingual"],
-  ])("serves %s with absolute permalink guids", async (path, guid) => {
+    ["/rss.xml", "/blog/hello-bilingual"],
+    ["/vi/rss.xml", "/vi/blog/hello-bilingual"],
+  ])("serves %s with an absolute permalink guid", async (path, postPath) => {
     const response = await SELF.fetch(`https://vulinh.dev${path}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("xml");
 
     const xml = await response.text();
-    expect(xml).toContain(`<guid isPermaLink="true">${guid}</guid>`);
+    const [guid] = guidsOf(xml);
+    expect(guid.pathname).toBe(postPath);
+
+    // The item link must be that same URL, character for character. A trailing
+    // slash here is a 307 in front of every subscriber who clicks through.
+    expect(xml).toContain(`<link>${guid.href}</link>`);
+  });
+
+  it("keeps the two feeds on one origin and one slug", async () => {
+    const en = guidsOf(await (await SELF.fetch("https://vulinh.dev/rss.xml")).text());
+    const vi = guidsOf(await (await SELF.fetch("https://vulinh.dev/vi/rss.xml")).text());
+
+    expect(vi[0].origin).toBe(en[0].origin);
+    // The slug is shared; only the locale prefix differs.
+    expect(vi[0].pathname).toBe(`/vi${en[0].pathname}`);
   });
 
   it("links exactly one feed per page, in the page's own language", async () => {
@@ -75,17 +97,29 @@ describe("feeds and sitemap", () => {
     }
   });
 
-  it("publishes a sitemap that lists real pages and nothing else", async () => {
+  it("publishes a sitemap that pairs the two languages and lists nothing else", async () => {
     const index = await SELF.fetch("https://vulinh.dev/sitemap-index.xml");
     expect(index.status).toBe(200);
 
     const xml = await (await SELF.fetch("https://vulinh.dev/sitemap-0.xml")).text();
-    expect(xml).toContain("<loc>https://vulinh.dev/blog/hello-bilingual</loc>");
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]));
+    const paths = locs.map((url) => url.pathname);
+
+    expect(paths).toContain("/blog/hello-bilingual");
+    expect(paths).toContain("/vi/blog/hello-bilingual");
+    expect(paths).toContain("/tags/spring-boot");
+    expect(new Set(locs.map((url) => url.origin)).size).toBe(1);
+
     // Reciprocal hreflang is the point of the i18n sitemap: it tells a crawler
     // the two language versions are one document, not duplicate content.
-    expect(xml).toContain('hreflang="vi" href="https://vulinh.dev/vi/blog/hello-bilingual"');
+    const alternates = [...xml.matchAll(/hreflang="(\w+)" href="([^"]+)"/g)];
+    const viAlternate = alternates.find(
+      (m) => m[1] === "vi" && new URL(m[2]).pathname === "/vi/blog/hello-bilingual",
+    );
+    expect(viAlternate, "the English post must point at its Vietnamese pair").toBeDefined();
+
     // An error page or a feed in the sitemap invites a crawler to index it.
-    expect(xml).not.toContain("/404");
+    expect(paths).not.toContain("/404");
     expect(xml).not.toContain("rss.xml");
   });
 });
