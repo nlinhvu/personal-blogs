@@ -91,23 +91,35 @@ export function collectPosts(
       }
     }
 
-    for (const lang of LANGUAGES) {
-      const filePath = join(dir, `${lang}.md`);
-      if (!existsSync(filePath)) {
-        throw new Error(
-          `Post "${slug}" is missing ${lang}.md — every post must exist in both languages`,
-        );
-      }
+    const present = LANGUAGES.filter((lang) => existsSync(join(dir, `${lang}.md`)));
+    const absent = LANGUAGES.filter((lang) => !present.includes(lang));
+
+    // The source file is what the post IS. A post.yaml naming a language that
+    // is not on disk is broken whether or not it is a draft.
+    if (!present.includes(meta.source)) {
+      throw new Error(
+        `Post "${slug}" is missing ${meta.source}.md — post.yaml names it as the source language`,
+      );
     }
 
-    // Checked after the structural rules above, on purpose: a draft that is
-    // missing a translation or naming an undeclared tag must still fail the
-    // build now, not on the day it is published.
+    // The translation is relaxed for a draft and only for a draft. The writing
+    // loop is: write the source, run the translation script, get the pair — so
+    // holding the invariant here would make every build red for the whole time
+    // a post is being written. Dropping `draft: true` puts it straight back.
+    if (absent.length > 0 && !meta.draft) {
+      throw new Error(
+        `Post "${slug}" is missing ${absent[0]}.md — every post must exist in both languages`,
+      );
+    }
+
+    // Checked after the structural rules above, on purpose: a draft naming an
+    // undeclared tag must still fail the build now, not on the day it is
+    // published.
     if (meta.draft && !options.includeDrafts) {
       continue;
     }
 
-    for (const lang of LANGUAGES) {
+    for (const lang of present) {
       const filePath = join(dir, `${lang}.md`);
       const parsed = matter(readFileSync(filePath, "utf8"));
       const frontmatter = frontmatterSchema.parse(parsed.data);
@@ -134,6 +146,33 @@ export function collectPosts(
   return posts;
 }
 
+export interface IncompleteDraft {
+  slug: string;
+  has: Language;
+  missing: Language;
+}
+
+/**
+ * Drafts that exist in one language only. A published post can never appear
+ * here — collectPosts refuses to return one — so a slug with a single entry is
+ * always a draft mid-translation. Easy to build, easy to forget: the loader
+ * says so out loud rather than staying quiet until publication day.
+ */
+export function incompleteDrafts(posts: CollectedPost[]): IncompleteDraft[] {
+  const bySlug = new Map<string, CollectedPost[]>();
+  for (const post of posts) {
+    bySlug.set(post.slug, [...(bySlug.get(post.slug) ?? []), post]);
+  }
+
+  return [...bySlug]
+    .filter(([, entries]) => entries.length === 1)
+    .map(([slug, [only]]) => ({
+      slug,
+      has: only.lang,
+      missing: LANGUAGES.find((lang) => lang !== only.lang)!,
+    }));
+}
+
 export function bilingualPostLoader(options: { base: string }): Loader {
   return {
     name: "bilingual-post-loader",
@@ -147,20 +186,40 @@ export function bilingualPostLoader(options: { base: string }): Loader {
       store.clear();
 
       for (const post of posts) {
+        const rendered = await renderMarkdown(post.body);
+
         store.set({
           id: post.id,
           data: post.data,
           body: post.body,
           filePath: post.filePath,
           digest: generateDigest(post.body),
-          rendered: await renderMarkdown(post.body),
+          rendered,
+          // An image in a post is written relative to the post directory, which
+          // sits outside the site root. renderMarkdown reports the paths it saw
+          // but store.set() does NOT read them off the rendered metadata, so
+          // they have to be handed over here — that is what registers each one
+          // as a real build asset. Leave this line out and the page ships an
+          // <img> carrying no src at all, with the build still green.
+          assetImports: rendered.metadata?.imagePaths ?? [],
         });
       }
 
+      const slugs = new Set(posts.map((post) => post.slug));
       logger.info(
-        `Loaded ${posts.length} entries from ${posts.length / 2} bilingual posts` +
+        `Loaded ${posts.length} entries from ${slugs.size} posts` +
           (includeDrafts ? " (drafts included)" : ""),
       );
+
+      const pending = incompleteDrafts(posts);
+      if (pending.length > 0) {
+        logger.warn(
+          `${pending.length} draft${pending.length > 1 ? "s" : ""} missing a translation: ` +
+            pending
+              .map(({ slug, has, missing }) => `${slug} (has ${has}.md, no ${missing}.md)`)
+              .join(", "),
+        );
+      }
     },
   };
 }

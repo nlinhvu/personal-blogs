@@ -1,6 +1,6 @@
 ---
 title: "Bài mẫu"
-description: "Hình dạng chung của mọi bài: front matter, phần chữ, rào code, và một cặp file hai ngôn ngữ."
+description: "Hình dạng chung của mọi bài: front matter, phần chữ, rào code, ảnh, và một cặp file hai ngôn ngữ."
 ---
 
 Chép thư mục này để bắt đầu một bài mới. Tên thư mục chính là slug và cũng là
@@ -27,5 +27,14 @@ spring-boot:
   vi: "Spring Boot"
 ```
 
-Phần trong rào code được mang nguyên vẹn qua bản dịch, nên mọi thứ nằm trong rào
-phải giống hệt nhau ở cả hai file.
+Ảnh nằm trong thư mục `assets/` của chính bài đó, viết bằng đường dẫn tương đối.
+Hai ngôn ngữ trỏ về cùng một file — một tấm ảnh, không phải mỗi thứ tiếng một
+bản.
+
+![Hai file ngôn ngữ cùng nối về một thư mục asset dùng chung](./assets/one-asset-two-languages.png)
+
+Script dịch không bao giờ để model nhìn thấy code hay đường dẫn. Khối code, đoạn
+code giữa dòng, đường dẫn ảnh, URL của link và thuộc tính `src` đều được rút ra
+trước khi gửi đi và ghép lại nguyên xi, nên chúng giống hệt nhau ở cả hai file.
+Alt text là ngoại lệ, và cố tình như vậy: nó là câu chữ mà screen reader đọc to
+lên, nên nó được dịch như mọi câu khác.

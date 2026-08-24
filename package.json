@@ -8,9 +8,15 @@
     "build": "npm run build --workspace=site",
     "preview": "npm run preview --workspace=site",
     "test": "vitest run && npm run test --workspace=site",
-    "test:scripts": "vitest run"
+    "test:scripts": "vitest run",
+    "translate": "tsx scripts/translate.ts"
   },
   "devDependencies": {
+    "tsx": "4.20.6",
     "vitest": "4.1.11"
+  },
+  "dependencies": {
+    "@google/genai": "2.18.0",
+    "yaml": "2.8.1"
   }
 }

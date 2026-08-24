@@ -121,23 +121,39 @@ export function extractProtected(markdown: string): Extraction {
   return { text, tokens };
 }
 
+const occurrences = (haystack: string, needle: string): number =>
+  haystack.split(needle).length - 1;
+
 export function restoreProtected(text: string, tokens: ProtectedToken[]): string {
-  let restored = text;
-
+  // Every placeholder is counted BEFORE anything is put back, on the model's
+  // own output. Counting as we go would be wrong in both directions: a restored
+  // code block may itself contain placeholder-shaped text — this blog writes
+  // about this guard — and a token duplicated by the model would otherwise slip
+  // through, since replace() swaps only the first hit and the second reaches
+  // the published file as literal ⟦URL_0⟧ text.
   for (let index = 0; index < tokens.length; index += 1) {
-    const { kind, value } = tokens[index];
-    const placeholder = placeholderFor(kind, index);
+    const placeholder = placeholderFor(tokens[index].kind, index);
+    const seen = occurrences(text, placeholder);
 
-    if (!restored.includes(placeholder)) {
+    if (seen === 0) {
       throw new Error(
         `Placeholder ${placeholder} is missing from the translated text — the model dropped or rewrote it`,
       );
     }
+    if (seen > 1) {
+      throw new Error(
+        `Placeholder ${placeholder} appears ${seen} times in the translated text — the model duplicated it, and only one of them can be a real span`,
+      );
+    }
+  }
 
+  let restored = text;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const { kind, value } = tokens[index];
     // The replacement is a function on purpose: a code block holding $&, $1 or
     // $$ is ordinary in a shell or regex example, and the string form of
     // replace would read those as backreferences and corrupt the block.
-    restored = restored.replace(placeholder, () => value);
+    restored = restored.replace(placeholderFor(kind, index), () => value);
   }
 
   return restored;

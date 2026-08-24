@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { collectPosts } from "../../src/loaders/bilingual-post";
+import { collectPosts, incompleteDrafts } from "../../src/loaders/bilingual-post";
 
 function fixture(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), "posts-"));
@@ -109,16 +109,83 @@ describe("collectPosts", () => {
     rmSync(root, { recursive: true });
   });
 
-  // Draft is about readiness to publish, not about being half-built. The
-  // bilingual invariant holds either way, so a missing translation is still a
-  // failed build rather than a quietly monolingual post.
-  it("still demands both languages from a draft", () => {
+  // The writing loop is: write en.md, run the translation script, get vi.md.
+  // In between, the post exists in one language. Holding the bilingual
+  // invariant over a draft would make `npm run dev` red for that whole window,
+  // which is exactly when the author most wants to look at the page.
+  it("lets a draft exist in only its source language", () => {
     const root = fixture({
       "tags.yaml": TAGS,
       "blog/wip/post.yaml": META + "draft: true\n",
       "blog/wip/en.md": EN,
     });
+    expect(collectPosts(root, { includeDrafts: true }).map((p) => p.id)).toEqual(["wip/en"]);
+    rmSync(root, { recursive: true });
+  });
+
+  // Relaxed for the half-written, never for the published. Dropping `draft:
+  // true` on a post with one language must go red on the spot.
+  it("still demands both languages once a post is published", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/wip/post.yaml": META,
+      "blog/wip/en.md": EN,
+    });
     expect(() => collectPosts(root, { includeDrafts: true })).toThrow(/wip.*vi\.md/);
+    rmSync(root, { recursive: true });
+  });
+
+  // A draft with no source file at all is broken, not in progress: post.yaml
+  // names a language that is not there.
+  it("still demands the source language file from a draft", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/wip/post.yaml": META + "draft: true\n",
+      "blog/wip/vi.md": VI,
+    });
+    expect(() => collectPosts(root, { includeDrafts: true })).toThrow(/wip.*en\.md/);
+    rmSync(root, { recursive: true });
+  });
+
+  it("leaves an incomplete draft out of a production build without complaining", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/wip/post.yaml": META + "draft: true\n",
+      "blog/wip/en.md": EN,
+      "blog/done/post.yaml": META,
+      "blog/done/en.md": EN,
+      "blog/done/vi.md": VI,
+    });
+    expect(collectPosts(root).map((p) => p.slug)).toEqual(["done", "done"]);
+    rmSync(root, { recursive: true });
+  });
+});
+
+// A draft that is missing its translation is fine to build and easy to forget.
+// The build says so out loud rather than staying quiet until publication day.
+describe("incompleteDrafts", () => {
+  it("names the drafts that are still missing a translation", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/wip/post.yaml": META + "draft: true\n",
+      "blog/wip/en.md": EN,
+      "blog/done/post.yaml": META,
+      "blog/done/en.md": EN,
+      "blog/done/vi.md": VI,
+    });
+    const posts = collectPosts(root, { includeDrafts: true });
+    expect(incompleteDrafts(posts)).toEqual([{ slug: "wip", has: "en", missing: "vi" }]);
+    rmSync(root, { recursive: true });
+  });
+
+  it("names nothing when every draft has both languages", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/wip/post.yaml": META + "draft: true\n",
+      "blog/wip/en.md": EN,
+      "blog/wip/vi.md": VI,
+    });
+    expect(incompleteDrafts(collectPosts(root, { includeDrafts: true }))).toEqual([]);
     rmSync(root, { recursive: true });
   });
 });

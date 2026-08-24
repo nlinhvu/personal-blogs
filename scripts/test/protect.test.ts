@@ -214,6 +214,25 @@ describe("round trip", () => {
     expect(() => restoreProtected("no placeholders here", tokens)).toThrow(/placeholder/i);
   });
 
+  it("throws when the translation duplicated a placeholder", () => {
+    // A model that reworks a sentence can emit the same token twice. Only the
+    // first gets replaced, and the second lands in the published file as
+    // literal ⟦URL_0⟧ text. Neither the missing-placeholder check nor the
+    // intact check sees it, because nothing went missing and nothing changed.
+    const { text, tokens } = extractProtected("See [the feed](/rss.xml).");
+    const doubled = text.replace("⟦URL_0⟧", "⟦URL_0⟧ ⟦URL_0⟧");
+    expect(() => restoreProtected(doubled, tokens)).toThrow(/twice|duplicat/i);
+  });
+
+  it("allows a code block that itself contains placeholder-shaped text", () => {
+    // This blog writes about this guard. A fenced example showing ⟦CODE_0⟧ is
+    // ordinary content, and counting placeholders after the code went back in
+    // would flag the author's own example as a model error.
+    const source = "Intro.\n\n```text\n⟦CODE_0⟧ ⟦CODE_0⟧\n```\n";
+    const { text, tokens } = extractProtected(source);
+    expect(restoreProtected(text, tokens)).toBe(source);
+  });
+
   it("restores a block containing regex replacement patterns verbatim", () => {
     // A shell or regex example carrying $& or $1 is ordinary prose in this blog.
     // String.replace reads those as backreferences, so a naive restore corrupts

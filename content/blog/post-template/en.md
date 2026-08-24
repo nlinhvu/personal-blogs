@@ -1,6 +1,6 @@
 ---
 title: "Post template"
-description: "The shape every post takes: front matter, prose, code fences, and a pair of language files."
+description: "The shape every post takes: front matter, prose, code fences, images, and a pair of language files."
 ---
 
 Copy this directory to start a post. The directory name becomes the slug and the
@@ -27,5 +27,14 @@ spring-boot:
   vi: "Spring Boot"
 ```
 
-Code blocks are carried across the translation untouched, so anything inside a
-fence must read the same in both files.
+Images live in this post's own `assets/` directory and are written as a relative
+path. Both languages point at the same file — there is one image, not a copy per
+language.
+
+![Two language files linked to the one asset directory they share](./assets/one-asset-two-languages.png)
+
+The translation script never lets the model see code or a path. Fenced blocks,
+inline spans, image paths, link URLs and `src` attributes are lifted out before
+the text is sent and put back byte-for-byte afterwards, so they read the same in
+both files. Alt text is the exception, and on purpose: it is prose a screen
+reader speaks aloud, so it gets translated like any other sentence.
