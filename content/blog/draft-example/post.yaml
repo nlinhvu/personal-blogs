@@ -1,0 +1,11 @@
+# draft: true keeps this out of production while leaving it in the repository.
+#
+# It stays visible on staging and preview, which is where IS_DEV is true and
+# where the site already sends X-Robots-Tag: noindex, nofollow. So a draft can
+# be reviewed on a real deployment with no way for a search engine to pick it
+# up. Delete this line, or set it to false, to publish.
+draft: true
+
+pubDate: 2026-08-25T09:00:00+07:00
+tags: [spring-boot]
+source: en

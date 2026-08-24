@@ -169,6 +169,41 @@ describe("feeds and sitemap", () => {
   });
 });
 
+// The draft rule is one line in the loader but it has to hold in six places at
+// once, so it is asserted against the built site rather than the function.
+//
+// Which way it should hold depends on the build, and the site already publishes
+// that fact: X-Robots-Tag is sent when IS_DEV is true and never on production.
+// Reading it here means one test covers both jobs of the deploy pipeline, and
+// neither branch can quietly stop being exercised.
+describe("drafts", () => {
+  it("appears on a build that is not indexed, and nowhere on production", async () => {
+    const home = await SELF.fetch("https://vulinh.dev/");
+    const isDev = home.headers.get("x-robots-tag") !== null;
+
+    const draft = await SELF.fetch("https://vulinh.dev/blog/draft-example");
+    const homeHtml = await home.text();
+    const feed = await (await SELF.fetch("https://vulinh.dev/rss.xml")).text();
+    const sitemap = await (await SELF.fetch("https://vulinh.dev/sitemap-0.xml")).text();
+
+    if (isDev) {
+      expect(draft.status, "a non-indexed build must serve the draft for review").toBe(200);
+      expect(homeHtml).toContain("/blog/draft-example");
+      expect(feed).toContain("/blog/draft-example");
+      return;
+    }
+
+    expect(draft.status, "production must not serve a draft").toBe(404);
+    for (const [where, body] of [
+      ["the home page", homeHtml],
+      ["the feed", feed],
+      ["the sitemap", sitemap],
+    ] as const) {
+      expect(body, `a draft must not reach ${where}`).not.toContain("/blog/draft-example");
+    }
+  });
+});
+
 describe("bilingual routing", () => {
   it("serves the English post", async () => {
     const response = await SELF.fetch("https://vulinh.dev/blog/hello-bilingual");

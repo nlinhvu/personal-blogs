@@ -65,4 +65,60 @@ describe("collectPosts", () => {
     expect(en.data.source).toBe(vi.data.source);
     rmSync(root, { recursive: true });
   });
+
+  // A draft is a finished-enough post that is not ready to be public. It is
+  // dropped here, in the loader, rather than in each page: the home page, both
+  // tag page routes, both feeds and the sitemap all read from this one list, so
+  // filtering once is the difference between one rule and six places to forget.
+  it("drops a draft from a production build", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/published/post.yaml": META,
+      "blog/published/en.md": EN,
+      "blog/published/vi.md": VI,
+      "blog/wip/post.yaml": META + "draft: true\n",
+      "blog/wip/en.md": EN,
+      "blog/wip/vi.md": VI,
+    });
+    expect(collectPosts(root).map((p) => p.slug)).toEqual(["published", "published"]);
+    rmSync(root, { recursive: true });
+  });
+
+  it("keeps a draft when drafts are asked for", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/wip/post.yaml": META + "draft: true\n",
+      "blog/wip/en.md": EN,
+      "blog/wip/vi.md": VI,
+    });
+    expect(collectPosts(root, { includeDrafts: true }).map((p) => p.id).sort()).toEqual([
+      "wip/en",
+      "wip/vi",
+    ]);
+    rmSync(root, { recursive: true });
+  });
+
+  it("treats a post with no draft field as published", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/a/post.yaml": META,
+      "blog/a/en.md": EN,
+      "blog/a/vi.md": VI,
+    });
+    expect(collectPosts(root)).toHaveLength(2);
+    rmSync(root, { recursive: true });
+  });
+
+  // Draft is about readiness to publish, not about being half-built. The
+  // bilingual invariant holds either way, so a missing translation is still a
+  // failed build rather than a quietly monolingual post.
+  it("still demands both languages from a draft", () => {
+    const root = fixture({
+      "tags.yaml": TAGS,
+      "blog/wip/post.yaml": META + "draft: true\n",
+      "blog/wip/en.md": EN,
+    });
+    expect(() => collectPosts(root, { includeDrafts: true })).toThrow(/wip.*vi\.md/);
+    rmSync(root, { recursive: true });
+  });
 });

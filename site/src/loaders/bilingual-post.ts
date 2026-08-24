@@ -14,6 +14,10 @@ const postMetaSchema = z.object({
   pubDate: z.string().datetime({ offset: true }),
   tags: z.array(z.string().regex(SLUG_PATTERN)).min(1),
   source: z.enum(LANGUAGES),
+  // Absent means published. Opting IN to being hidden is the safe default:
+  // forgetting the field publishes a finished post, while the other way round
+  // would silently withhold one and give no signal that it happened.
+  draft: z.boolean().optional().default(false),
 });
 
 const frontmatterSchema = z.object({
@@ -40,6 +44,7 @@ export interface CollectedPost {
     pubDate: Date;
     tags: string[];
     source: Language;
+    draft: boolean;
   };
 }
 
@@ -51,7 +56,15 @@ export function readTagRegistry(contentRoot: string): Record<string, { en: strin
   return tagRegistrySchema.parse(parseYaml(readFileSync(path, "utf8")));
 }
 
-export function collectPosts(contentRoot: string): CollectedPost[] {
+// A draft is a post that is finished enough to sit in the repository and not
+// finished enough to be public. Dropping it HERE, in the loader, is the whole
+// design: the home page, both tag routes, both feeds and the sitemap all read
+// from this one list, so one filter covers six places that would otherwise each
+// need to remember.
+export function collectPosts(
+  contentRoot: string,
+  options: { includeDrafts?: boolean } = {},
+): CollectedPost[] {
   const tags = readTagRegistry(contentRoot);
   const blogRoot = join(contentRoot, "blog");
   const slugs = readdirSync(blogRoot, { withFileTypes: true })
@@ -87,6 +100,13 @@ export function collectPosts(contentRoot: string): CollectedPost[] {
       }
     }
 
+    // Checked after the structural rules above, on purpose: a draft that is
+    // missing a translation or naming an undeclared tag must still fail the
+    // build now, not on the day it is published.
+    if (meta.draft && !options.includeDrafts) {
+      continue;
+    }
+
     for (const lang of LANGUAGES) {
       const filePath = join(dir, `${lang}.md`);
       const parsed = matter(readFileSync(filePath, "utf8"));
@@ -105,6 +125,7 @@ export function collectPosts(contentRoot: string): CollectedPost[] {
           pubDate: new Date(meta.pubDate),
           tags: meta.tags,
           source: meta.source,
+          draft: meta.draft,
         },
       });
     }
@@ -117,7 +138,12 @@ export function bilingualPostLoader(options: { base: string }): Loader {
   return {
     name: "bilingual-post-loader",
     load: async ({ store, renderMarkdown, generateDigest, logger }) => {
-      const posts = collectPosts(options.base);
+      // Drafts are visible exactly where the site is already told not to be
+      // indexed. IS_DEV drives the X-Robots-Tag on staging and preview, so
+      // reusing it means a draft can be reviewed on a real deployment without
+      // any chance of it reaching a search engine.
+      const includeDrafts = process.env.IS_DEV === "true";
+      const posts = collectPosts(options.base, { includeDrafts });
       store.clear();
 
       for (const post of posts) {
@@ -131,7 +157,10 @@ export function bilingualPostLoader(options: { base: string }): Loader {
         });
       }
 
-      logger.info(`Loaded ${posts.length} entries from ${posts.length / 2} bilingual posts`);
+      logger.info(
+        `Loaded ${posts.length} entries from ${posts.length / 2} bilingual posts` +
+          (includeDrafts ? " (drafts included)" : ""),
+      );
     },
   };
 }
