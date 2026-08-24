@@ -44,3 +44,34 @@ describe("headers on a real response through the Workers runtime", () => {
     expect(html).toContain('http-equiv="content-security-policy"');
   });
 });
+
+// A CSP hash cannot whitelist a style ATTRIBUTE, only `unsafe-inline` or
+// `unsafe-hashes` would, and the site ships neither. So an inline `style=`
+// anywhere in the markup is dead on arrival: the browser drops it and logs a
+// violation on every page view. Shiki, the default Astro highlighter, paints
+// every token that way, which is why the site renders code with Prism instead.
+// This test is the tripwire — it fails the moment something reintroduces one.
+describe("markup stays inside the policy", () => {
+  const pages = [
+    "https://vulinh.dev/",
+    "https://vulinh.dev/vi",
+    "https://vulinh.dev/blog/hello-bilingual",
+    "https://vulinh.dev/vi/blog/hello-bilingual",
+  ];
+
+  it.each(pages)("carries no inline style attribute: %s", async (url) => {
+    const html = await (await SELF.fetch(url)).text();
+    expect(html.match(/\sstyle="/g)).toBeNull();
+  });
+
+  it.each(pages)("carries no script tag: %s", async (url) => {
+    const html = await (await SELF.fetch(url)).text();
+    expect(html).not.toContain("<script");
+  });
+
+  it("colours code through Prism classes, not inline styles", async () => {
+    const html = await (await SELF.fetch("https://vulinh.dev/blog/hello-bilingual")).text();
+    expect(html).toContain('<pre class="language-java"');
+    expect(html).toContain('<span class="token keyword">');
+  });
+});

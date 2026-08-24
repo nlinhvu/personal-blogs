@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "./code.css";
+
+/* Dark mode follows the operating system. No JavaScript, no toggle, no flash of
+   the wrong theme — the browser resolves this before first paint. */
+@theme {
+  --color-page: #ffffff;
+  --color-ink: #18181b;
+  --color-muted: #52525b;
+  --color-rule: #e4e4e7;
+}
+
+/* The dark values override the plain custom properties, not the theme. `@theme`
+   only works at the top level of a stylesheet: nested inside a media query,
+   Tailwind drops the block silently and the page stays light forever. Tailwind
+   compiles `@theme` into a `:root` rule, so redeclaring the same names here
+   wins on source order and every `var(--color-*)` follows. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page: #0b0b0e;
+    --color-ink: #e4e4e7;
+    --color-muted: #a1a1aa;
+    --color-rule: #27272a;
+  }
+}
+
+html {
+  background: var(--color-page);
+  color: var(--color-ink);
+  color-scheme: light dark;
+}
