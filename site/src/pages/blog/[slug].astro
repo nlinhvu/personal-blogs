@@ -36,6 +36,7 @@ const schema = blogPostingSchema({
   path={path}
   alternatePath={alternatePath}
   defaultPath={path}
+  slug={entry.data.slug}
 >
   <Fragment slot="head"><StructuredData schema={schema} /></Fragment>
   <nav><LanguageSwitcher lang="en" href={alternatePath} /></nav>

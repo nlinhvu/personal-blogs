@@ -10,7 +10,10 @@
 :root {
   --code-bg: #24292e;
   --code-fg: #e1e4e8;
-  --code-comment: #6a737d;
+  /* #6a737d, the GitHub-dark original, measures 3.05:1 on --code-bg --
+     under the 4.5:1 WCAG AA needs for text this size, and it is comments
+     that carry the explanation. Lightened to 4.77:1, measured 2026-08-25. */
+  --code-comment: #8b949e;
   --code-keyword: #f97583;
   --code-string: #9ecbff;
   --code-literal: #79b8ff;

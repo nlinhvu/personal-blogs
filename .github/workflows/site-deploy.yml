@@ -118,4 +118,19 @@ jobs:
           # bare-host match could never fail — worse than having no check.
           grep -qE '<script[^>]*static\.cloudflareinsights\.com' <<<"$home" \
             || { echo "FAIL: web analytics beacon is gone from production"; exit 1; }
+
+          # The card is the first thing a stranger sees of this blog. It fails
+          # in a way nobody notices -- the unfurl still renders, just wrong or
+          # blank -- so it gets a real assertion rather than a glance. Same
+          # real-slug trade-off as the canonical check above: if that post is
+          # ever unpublished, these three lines move with it.
+          og=$(curl -sS -o /dev/null -w '%{http_code} %{content_type}' \
+            https://vulinh.dev/og/blog/reading-a-ds-record.png)
+          test "$og" = "200 image/png" \
+            || { echo "FAIL: open graph image is $og"; exit 1; }
+          vi=$(curl -sS https://vulinh.dev/vi/blog/reading-a-ds-record)
+          grep -q 'property="og:image" content="https://vulinh.dev/og/vi/blog/' <<<"$vi" \
+            || { echo "FAIL: the Vietnamese post advertises the wrong card"; exit 1; }
+          grep -q '"@type":"BlogPosting"' <<<"$vi" \
+            || { echo "FAIL: structured data is missing"; exit 1; }
           echo "production smoke passed"
