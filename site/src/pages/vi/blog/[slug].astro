@@ -2,7 +2,9 @@
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import LanguageSwitcher from "../../../components/LanguageSwitcher.astro";
-import { postPath, tagPath } from "../../../lib/urls";
+import StructuredData from "../../../components/StructuredData.astro";
+import { postPath, tagPath, canonicalUrl, ogImagePath } from "../../../lib/urls";
+import { blogPostingSchema } from "../../../lib/schema";
 import { readTagRegistry } from "../../../loaders/bilingual-post";
 import { CONTENT_BASE } from "../../../lib/content-base";
 
@@ -15,6 +17,17 @@ const { entry } = Astro.props;
 const { Content } = await render(entry);
 const path = postPath(entry.data.slug, "vi");
 const alternatePath = postPath(entry.data.slug, "en");
+const site = Astro.site!.toString();
+const tagRegistry = readTagRegistry(CONTENT_BASE);
+const schema = blogPostingSchema({
+  title: entry.data.title,
+  description: entry.data.description,
+  canonical: canonicalUrl(path, site),
+  imageUrl: canonicalUrl(ogImagePath(entry.data.slug, "vi"), site),
+  pubDate: entry.data.pubDate,
+  lang: "vi",
+  tagLabels: entry.data.tags.map((tag) => tagRegistry[tag].vi),
+});
 ---
 <BaseLayout
   title={entry.data.title}
@@ -24,6 +37,7 @@ const alternatePath = postPath(entry.data.slug, "en");
   alternatePath={alternatePath}
   defaultPath={alternatePath}
 >
+  <Fragment slot="head"><StructuredData schema={schema} /></Fragment>
   <nav><LanguageSwitcher lang="vi" href={alternatePath} /></nav>
   <article class="prose prose-lg prose-zinc dark:prose-invert max-w-none">
     <h1>{entry.data.title}</h1>

@@ -74,7 +74,13 @@ describe("markup stays inside the policy", () => {
   // is absent here and this assertion is about our output, not the served page.
   it.each(pages)("ships no javascript of its own: %s", async (url) => {
     const html = await (await SELF.fetch(url)).text();
-    expect(html).not.toContain("<script");
+    // A <script type="application/ld+json"> is a data block, not code: no
+    // browser executes it, so it cannot be load-bearing and script-src never
+    // applies to it. Strip those and hold the original line against what is
+    // left, so a real script still fails here. That is the whole point of
+    // stripping by exact type rather than loosening the match.
+    const executable = html.replace(/<script type="application\/ld\+json">.*?<\/script>/gs, "");
+    expect(executable).not.toContain("<script");
   });
 
   it("allows the analytics beacon to load and to report", async () => {
