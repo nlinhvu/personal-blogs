@@ -32,6 +32,7 @@ jobs:
         with:
           site-url: ${{ vars.STAGING_URL }}
           is-dev: "true"
+          build-sha: ${{ github.sha }}
       # `npm test` builds a SECOND site, from test/fixtures/content into
       # dist-test/, so it no longer touches the dist/ built above. IS_DEV is
       # still passed on: the draft assertions read X-Robots-Tag off the response
@@ -54,6 +55,8 @@ jobs:
           set -euo pipefail
           URL="${{ vars.STAGING_URL }}"
           .github/scripts/wait-for-http-200.sh "$URL/"
+          # Routable is not the same as up to date -- see the production job.
+          .github/scripts/wait-for-version.sh "$URL" "${{ github.sha }}"
           test "$(curl -sS -o /dev/null -w '%{http_code}' "$URL/vi")" = "200"
           # Fetch then match, for the reason spelled out in the production job.
           headers=$(curl -sSI "$URL/")
@@ -73,6 +76,7 @@ jobs:
         with:
           site-url: https://vulinh.dev
           is-dev: "false"
+          build-sha: ${{ github.sha }}
       - run: npx wrangler deploy
         working-directory: site
         env:
@@ -82,6 +86,14 @@ jobs:
         run: |
           set -euo pipefail
           .github/scripts/wait-for-http-200.sh https://vulinh.dev/
+          # The line above only proves the HOSTNAME routes, and it already did,
+          # from the previous deployment -- which is why it reports "200 on
+          # attempt 1 (0s)" and proves nothing about what is being served. On
+          # 2026-08-25 that gap let a green gate hand a 404 to the assertion
+          # behind it: an Open Graph image added by the deploy was still not
+          # routable 0.8s after `wrangler deploy` returned. Wait for the commit
+          # we just pushed, then every assertion below reads THIS version.
+          .github/scripts/wait-for-version.sh https://vulinh.dev "${{ github.sha }}"
 
           # Fetch first, match second. `curl ... | grep -q` reads tidier and is
           # a trap: grep exits at the first match, curl keeps writing into a

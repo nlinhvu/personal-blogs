@@ -7,6 +7,10 @@ inputs:
   is-dev:
     description: "true when the build targets staging or preview"
     required: true
+  build-sha:
+    description: Commit the build came from, served at /version.txt so a deploy can prove which version is live
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -20,4 +24,5 @@ runs:
       env:
         SITE_URL: ${{ inputs.site-url }}
         IS_DEV: ${{ inputs.is-dev }}
+        BUILD_SHA: ${{ inputs.build-sha }}
       run: npm run build
