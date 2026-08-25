@@ -23,6 +23,8 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@resvg/resvg-js": "2.6.2",
+    "satori": "0.33.4",
     "vitest": "4.1.11",
     "wrangler": "4.124.0"
   }
