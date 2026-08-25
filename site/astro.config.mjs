@@ -31,6 +31,13 @@ export default defineConfig({
         defaultLocale: "en",
         locales: { en: "en", vi: "vi" },
       },
+      // Open Graph images are advertised to unfurlers through meta tags. They
+      // are not pages, so listing them tells a crawler to index a PNG as a
+      // destination -- which is how a search result ends up being a picture.
+      // Measured 2026-08-25: the plugin already lists only HTML pages, so this
+      // changes nothing today. It is here to keep the rule readable off the
+      // config, and to hold if a future route starts emitting one as a page.
+      filter: (page) => !page.includes("/og/"),
     }),
   ],
   vite: { plugins: [tailwindcss()] },

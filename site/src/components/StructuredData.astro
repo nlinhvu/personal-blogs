@@ -1,0 +1,16 @@
+---
+// A JSON-LD block is data, not script. A browser never executes a <script> whose
+// type is not a JavaScript one, so `script-src` never applies to it: measured on
+// 2026-08-25 against this page's own CSP, which carries no 'unsafe-inline' and
+// no hash matching this block, and the browser reported no violation.
+//
+// So the two directives here are about the BUILD, not the policy. `is:inline`
+// keeps Astro from treating the contents as a module to bundle and rewrite --
+// that is also why no hash is generated for it. `set:html` writes the JSON
+// through verbatim instead of letting it be escaped as text.
+interface Props {
+  schema: object;
+}
+const { schema } = Astro.props;
+---
+<script type="application/ld+json" is:inline set:html={JSON.stringify(schema)} />

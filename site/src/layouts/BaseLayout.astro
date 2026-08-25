@@ -1,6 +1,7 @@
 ---
 import type { Language } from "../loaders/bilingual-post";
-import { canonicalUrl, otherLanguage } from "../lib/urls";
+import { canonicalUrl, otherLanguage, ogImagePath } from "../lib/urls";
+import { SITE_NAME } from "../lib/schema";
 import "../styles/global.css";
 
 interface Props {
@@ -10,10 +11,15 @@ interface Props {
   path: string;
   alternatePath: string;
   defaultPath: string;
+  // Present only on a post. Its absence is what marks every other page as a
+  // plain website rather than an article, and is why the home page ships no
+  // og:image: there is no per-page card to advertise.
+  slug?: string;
 }
 
-const { title, description, lang, path, alternatePath, defaultPath } = Astro.props;
+const { title, description, lang, path, alternatePath, defaultPath, slug } = Astro.props;
 const site = Astro.site!.toString();
+const OG_LOCALE: Record<Language, string> = { en: "en_US", vi: "vi_VN" };
 ---
 <!doctype html>
 <html lang={lang}>
@@ -25,6 +31,21 @@ const site = Astro.site!.toString();
     <link rel="canonical" href={canonicalUrl(path, site)} />
     <link rel="alternate" hreflang={otherLanguage(lang)} href={canonicalUrl(alternatePath, site)} />
     <link rel="alternate" hreflang="x-default" href={canonicalUrl(defaultPath, site)} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl(path, site)} />
+    <meta property="og:type" content={slug ? "article" : "website"} />
+    <meta property="og:locale" content={OG_LOCALE[lang]} />
+    <meta property="og:locale:alternate" content={OG_LOCALE[otherLanguage(lang)]} />
+    {slug && (
+      <>
+        <meta property="og:image" content={canonicalUrl(ogImagePath(slug, lang), site)} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </>
+    )}
     <!-- Browsers ask for /favicon.ico whether or not it is declared, so the file
          exists as well as the link. The SVG is what a current browser picks. -->
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
@@ -43,7 +64,10 @@ const site = Astro.site!.toString();
   </head>
   <body class="min-h-screen bg-[var(--color-page)] text-[var(--color-ink)] antialiased">
     <div class="mx-auto max-w-3xl px-5 py-10">
-      <slot />
+      <!-- The landmark wraps the SLOT, not the whole container: a <footer> only
+           counts as contentinfo while it sits outside <main>, so swallowing it
+           here would trade one landmark for another. -->
+      <main><slot /></main>
       <footer class="mt-16 border-t border-[var(--color-rule)] pt-6 text-sm text-[var(--color-muted)]">
         <p>
           Prose licensed under <a class="underline" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
